@@ -32,3 +32,14 @@ Sem JavaScript, o botão principal leva a `releases/latest`. Com JavaScript, `sr
 ## Design
 
 Tokens e layout vêm do arquivo MERGE DEV no Paper (tema escuro). O tema claro é derivado do mesmo sistema; em `src/styles/tokens.css` o acento usado como texto escurece no claro para manter contraste.
+
+## Movimento
+
+Todo o movimento é CSS (`src/styles/motion.css`) mais um módulo pequeno e local (`src/scripts/motion.ts`), sem bibliotecas:
+
+- fundo vivo (grade e brilhos com parallax), faixas que convergem no hero, janela do app animada, brilho em "Um só lugar.";
+- faixa de agentes em duas fileiras que rolam em sentidos opostos (a lista vem de `AGENTS` em `src/config.ts`);
+- header fixo com barra de progresso e seção atual destacada, cards que entram ao rolar e luz que segue o cursor;
+- diagrama de privacidade com dados trafegando (e um pacote barrado a caminho do "servidor").
+
+Acessibilidade: `prefers-reduced-motion` desliga tudo, e o botão "Pausar animações" (na faixa de agentes) faz o mesmo e lembra a escolha em `localStorage`. Sem JavaScript a página continua completa; o JS só liga reveal, parallax e a luz do cursor, e só mexe no CSSOM (compatível com a CSP estrita).

@@ -5,14 +5,14 @@ import DownloadActions from "./DownloadActions.astro";
 
 <section class="cta" id="baixar" aria-labelledby="baixar-titulo">
   <div class="container cta__inner">
-    <h2 class="h2 cta__title" id="baixar-titulo">
+    <h2 class="h2 cta__title" id="baixar-titulo" data-reveal>
       <span>Pronto para juntar</span>
       <span>seus agentes?</span>
     </h2>
 
     <DownloadActions />
 
-    <aside class="notice" aria-labelledby="aviso-titulo">
+    <aside class="notice" aria-labelledby="aviso-titulo" data-reveal>
       <h3 class="notice__title" id="aviso-titulo">
         <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
           <path d="M12 3l9 16H3z"></path>
@@ -44,7 +44,7 @@ import DownloadActions from "./DownloadActions.astro";
       </p>
     </aside>
 
-    <details class="checksums" id="checksums">
+    <details class="checksums" id="checksums" data-reveal>
       <summary>
         <span>Conferir integridade (SHA-256)</span>
         <span class="faq__icon" aria-hidden="true">

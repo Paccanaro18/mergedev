@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import "../styles/motion.css";
 import poppins600 from "../assets/fonts/poppins-latin-600-normal.woff2?url";
 import lora from "../assets/fonts/lora-latin-wght-normal.woff2?url";
 
@@ -30,10 +31,16 @@ const { title, description } = Astro.props;
     <link rel="preload" href={lora} as="font" type="font/woff2" crossorigin />
   </head>
   <body>
+    <div class="bg" aria-hidden="true">
+      <div class="bg__grid"></div>
+      <div class="bg__blob bg__blob--a"></div>
+      <div class="bg__blob bg__blob--b"></div>
+    </div>
     <a class="skip-link" href="#conteudo">Pular para o conteúdo</a>
     <slot />
     <script>
       import "../scripts/download";
+      import "../scripts/motion";
     </script>
   </body>
 </html>

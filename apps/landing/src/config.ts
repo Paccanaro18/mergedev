@@ -64,13 +64,26 @@ export function downloadHref(installer: Installer): string {
     : RELEASES_URL;
 }
 
+export type AgentIcon = "spark" | "terminal" | "gemini" | "cube" | "bot" | "letter-a" | "brackets";
+
 export interface Agent {
   name: string;
+  icon: AgentIcon;
   /** Agentes ativos ganham destaque; os demais aparecem como "em breve". */
   status: "available" | "soon";
 }
 
+/**
+ * Faixa de agentes. Só Claude Code e Codex existem hoje; os demais são os
+ * candidatos do design e aparecem sempre marcados "em breve". Ajuste esta
+ * lista para refletir o que o roadmap realmente confirmar.
+ */
 export const AGENTS: readonly Agent[] = [
-  { name: "Claude Code", status: "available" },
-  { name: "Codex", status: "available" },
+  { name: "Claude Code", icon: "spark", status: "available" },
+  { name: "Codex", icon: "terminal", status: "available" },
+  { name: "Gemini CLI", icon: "gemini", status: "soon" },
+  { name: "Cursor", icon: "cube", status: "soon" },
+  { name: "Copilot CLI", icon: "bot", status: "soon" },
+  { name: "Aider", icon: "letter-a", status: "soon" },
+  { name: "OpenCode", icon: "brackets", status: "soon" },
 ];

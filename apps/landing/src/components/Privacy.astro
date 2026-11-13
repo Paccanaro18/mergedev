@@ -1,6 +1,6 @@
 <section class="privacy" id="privacidade" aria-labelledby="privacidade-titulo">
   <div class="container privacy__inner">
-    <div class="privacy__copy">
+    <div class="privacy__copy" data-reveal>
       <p class="eyebrow">100% local</p>
       <h2 class="privacy__title" id="privacidade-titulo">
         <span>Seu código fica</span>
@@ -12,20 +12,19 @@
       </p>
     </div>
 
-    <div class="diagram" role="img" aria-label="Diagrama: no seu computador, o Merge conversa com o CLI do agente. Não existe servidor do Merge e nada é enviado.">
+    <div class="diagram" data-reveal role="img" aria-label="Diagrama: no seu computador, o Merge conversa com o CLI do agente. Não existe servidor do Merge e nada é enviado.">
       <div class="diagram__local">
         <span class="diagram__label">SEU COMPUTADOR</span>
         <div class="diagram__flow">
           <span class="diagram__node diagram__node--merge">Merge</span>
-          <svg width="40" height="16" viewBox="0 0 40 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M2 8h34M30 2l6 6-6 6"></path>
-          </svg>
+          <span class="diagram__link"><span class="packet"></span></span>
           <span class="diagram__node diagram__node--cli">CLI do agente</span>
         </div>
         <p class="diagram__note">Seu projeto, seu login, suas pastas.</p>
       </div>
+      <div class="diagram__wire"><span class="packet packet--out"></span></div>
       <div class="diagram__server">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+        <svg class="diagram__x" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
           <path d="M5 5l14 14M19 5L5 19"></path>
         </svg>
         <div>
