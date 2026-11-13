@@ -130,3 +130,22 @@ li button:disabled { opacity: 0.5; cursor: default; }
 .permission-actions { display: flex; gap: 8px; margin-top: 8px; }
 .permission-actions button { padding: 4px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
 .permission-actions button:disabled { opacity: 0.5; cursor: default; }
+
+.changes { margin: 12px 0; padding: 8px 0 0 12px; border-left: 2px solid var(--border); }
+.changes h3 { margin: 0 0 6px; font-size: 13px; }
+.changes code { font-size: 12px; }
+.files { margin: 4px 0; }
+.files li { display: flex; gap: 8px; align-items: baseline; padding: 1px 0; font-size: 13px; }
+.file-status { width: 80px; flex-shrink: 0; font-size: 12px; color: var(--muted); }
+.file-status.added { color: var(--ok); }
+.file-status.deleted { color: var(--bad); }
+.patch { margin: 6px 0; max-height: 360px; overflow: auto; background: var(--panel); border-radius: 6px; padding: 6px 0; font-size: 12px; }
+.patch-line { padding: 0 8px; white-space: pre; }
+.patch-line.add { color: var(--ok); }
+.patch-line.del { color: var(--bad); }
+.patch-line.hunk, .patch-line.meta { color: var(--muted); }
+.changes-actions { display: flex; gap: 8px; margin: 8px 0; }
+.changes-actions button { padding: 4px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.changes-actions button:disabled { opacity: 0.5; cursor: default; }
+.changes-actions .danger { color: var(--bad); border-color: var(--bad); }
+.changes-actions .primary { margin-top: 0; }

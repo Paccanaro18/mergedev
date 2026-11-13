@@ -3,7 +3,7 @@ import { defineConfig } from "electron-vite";
 
 // Workspace packages ship as ESM in dist/; bundle them into main/preload
 // instead of leaving them as runtime requires.
-const workspacePackages = ["@merge/core", "@merge/providers", "@merge/runner", "@merge/store"];
+const workspacePackages = ["@merge/core", "@merge/providers", "@merge/runner", "@merge/store", "@merge/workspace"];
 
 export default defineConfig({
   main: { build: { externalizeDeps: { exclude: workspacePackages } } },
