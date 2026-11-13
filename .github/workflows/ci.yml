@@ -1,0 +1,44 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Typecheck, build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    env:
+      # CI never launches Electron, so skip downloading its binary.
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck and build packages
+        run: npx tsc -b
+
+      - name: Typecheck desktop app
+        run: npm run typecheck -w @merge/desktop
+
+      - name: Build desktop app
+        run: npx electron-vite build
+        working-directory: apps/desktop
+
+      - name: Test packages
+        run: npm test --workspaces --if-present
