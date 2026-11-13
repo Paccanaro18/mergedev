@@ -39,7 +39,15 @@ Todo o movimento é CSS (`src/styles/motion.css`) mais um módulo pequeno e loca
 
 - fundo vivo (grade e brilhos com parallax), faixas que convergem no hero, janela do app animada, brilho em "Um só lugar.";
 - faixa de agentes em duas fileiras que rolam em sentidos opostos (a lista vem de `AGENTS` em `src/config.ts`);
-- header fixo com barra de progresso e seção atual destacada, cards que entram ao rolar e luz que segue o cursor;
+- cards que entram ao rolar e luz que segue o cursor (header sempre igual: sem estado de rolagem);
 - diagrama de privacidade com dados trafegando (e um pacote barrado a caminho do "servidor").
 
 Acessibilidade: `prefers-reduced-motion` desliga tudo, e o botão "Pausar animações" (na faixa de agentes) faz o mesmo e lembra a escolha em `localStorage`. Sem JavaScript a página continua completa; o JS só liga reveal, parallax e a luz do cursor, e só mexe no CSSOM (compatível com a CSP estrita).
+
+### Desempenho da rolagem (regras para não travar de novo)
+
+Medido com CPU 4x mais lento: o que travava era **recálculo de estilo**, não layout nem JS. Por isso:
+
+- **Nunca escreva variável CSS ou atributo no `<html>` a cada frame de rolagem** (parallax, progresso etc.): invalida o estilo da página inteira. Escreva `transform` num elemento pequeno ou variável no próprio elemento.
+- Animações só com `transform`/`opacity` (compositor). `box-shadow`, `left`/`top` e `background-position` repintam a cada quadro.
+- A decoração que repinta (brilhos do fundo, brilho do título, pulsos das faixas) pausa **durante a rolagem** (`data-scrolling` no `<body>`) e **fora da tela** (`data-offscreen` nas seções com `data-live`).
