@@ -3,3 +3,13 @@ dist
 out
 *.tsbuildinfo
 .env
+
+# Secrets and local tooling that must never be committed
+.env.*
+!.env.example
+.vercel
+*.pem
+*.key
+*.p12
+*.pfx
+*.cer

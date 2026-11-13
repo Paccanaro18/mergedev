@@ -9,9 +9,65 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# The token can only read the repo. No job here needs more.
+permissions:
+  contents: read
+
 jobs:
-  check:
+  # Decides which parts of the repo a change touches, so the app and the landing
+  # page are only checked when they changed. Plain `git diff`, no third-party action.
+  changes:
+    name: Detect changed areas
+    runs-on: ubuntu-latest
+    outputs:
+      app: ${{ steps.diff.outputs.app }}
+      landing: ${{ steps.diff.outputs.landing }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = "pull_request" ]; then base="$PR_BASE"; else base="$PUSH_BEFORE"; fi
+
+          # Unknown base (first push, force push): check everything.
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            files="apps/landing/package.json package-lock.json packages/"
+          else
+            files="$(git diff --name-only "$base" HEAD)"
+          fi
+          echo "Changed files:"; echo "$files"
+
+          app=false
+          landing=false
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            case "$f" in
+              apps/landing/*) landing=true ;;
+              # Shared files affect both.
+              package.json|package-lock.json|.github/workflows/ci.yml) app=true; landing=true ;;
+              docs/*|*.md) ;;  # documentation alone needs no build
+              *) app=true ;;
+            esac
+          done <<< "$files"
+
+          # The landing page is only built once it exists.
+          [ -f apps/landing/package.json ] || landing=false
+
+          echo "app=$app" >> "$GITHUB_OUTPUT"
+          echo "landing=$landing" >> "$GITHUB_OUTPUT"
+
+  app:
     name: Typecheck, build and test (${{ matrix.os }})
+    needs: changes
+    if: needs.changes.outputs.app == 'true'
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -21,9 +77,11 @@ jobs:
       # CI never launches Electron, so skip downloading its binary.
       ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 24
           cache: npm
@@ -42,3 +100,39 @@ jobs:
 
       - name: Test packages
         run: npm test --workspaces --if-present
+
+  landing:
+    name: Build landing page
+    needs: changes
+    if: needs.changes.outputs.landing == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24
+          cache: npm
+
+      # --ignore-scripts: the landing build does not need install scripts (e.g. Electron's binary download).
+      - run: npm ci --ignore-scripts
+
+      - run: npm run build -w @merge/landing
+
+  # The single check branch protection requires. It always runs; a skipped area counts as fine,
+  # a failed or cancelled one does not.
+  ci-ok:
+    name: CI OK
+    needs: [changes, app, landing]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Results: $RESULTS"
+          case " $RESULTS " in
+            *" failure "*|*" cancelled "*) echo "A required area failed."; exit 1 ;;
+          esac
