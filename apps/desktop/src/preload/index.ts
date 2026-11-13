@@ -16,6 +16,8 @@ const api: MergeApi = {
   runs: {
     start: (taskId) => ipcRenderer.invoke(Channels.runsStart, taskId),
     cancel: (taskId) => ipcRenderer.invoke(Channels.runsCancel, taskId),
+    list: (taskId) => ipcRenderer.invoke(Channels.runsList, taskId),
+    events: (runId) => ipcRenderer.invoke(Channels.runsEvents, runId),
     onEvent: (listener) => {
       const handler = (_e: IpcRendererEvent, message: RunEventMessage) => listener(message);
       ipcRenderer.on(Channels.runsEvent, handler);

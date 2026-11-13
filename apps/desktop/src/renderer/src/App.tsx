@@ -1,6 +1,7 @@
 import type { AgentEvent, Project, Task } from "@merge/core";
 import { useEffect, useState, type FormEvent } from "react";
 import type { MergeApi } from "../../shared/api";
+import { History } from "./History";
 import { RunView } from "./RunView";
 
 type ProviderInfo = Awaited<ReturnType<MergeApi["providers"]["list"]>>[number];
@@ -21,6 +22,7 @@ export function App() {
   const [live, setLive] = useState<Record<string, AgentEvent[]>>({});
   const [active, setActive] = useState<Set<string>>(new Set());
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [openMode, setOpenMode] = useState<"live" | "history">("live");
 
   const fail = (err: unknown) => setError(errorMessage(err));
 
@@ -55,6 +57,7 @@ export function App() {
     setError(null);
     setLive((cur) => ({ ...cur, [taskId]: [] }));
     setOpenTaskId(taskId);
+    setOpenMode("live");
     setActive((cur) => new Set(cur).add(taskId));
     setTasks((cur) => cur?.map((t) => (t.id === taskId ? { ...t, status: "running" } : t)) ?? cur);
     try {
@@ -140,7 +143,11 @@ export function App() {
             active={active}
             openTaskId={openTaskId}
             events={openTaskId ? (live[openTaskId] ?? []) : []}
-            onOpen={setOpenTaskId}
+            openMode={openMode}
+            onOpen={(id, mode) => {
+              setOpenTaskId(id);
+              setOpenMode(mode);
+            }}
             onRun={(id) => void runTask(id)}
             onCancel={(id) => void window.merge.runs.cancel(id)}
             onCreated={(task) => setTasks((cur) => [...(cur ?? []), task])}
@@ -165,13 +172,14 @@ function TaskPanel(props: {
   active: Set<string>;
   openTaskId: string | null;
   events: AgentEvent[];
-  onOpen: (taskId: string) => void;
+  openMode: "live" | "history";
+  onOpen: (taskId: string, mode: "live" | "history") => void;
   onRun: (taskId: string) => void;
   onCancel: (taskId: string) => void;
   onCreated: (task: Task) => void;
   onError: (err: unknown) => void;
 }) {
-  const { project, tasks, canRun, active, openTaskId, events, onOpen, onRun, onCancel, onCreated, onError } = props;
+  const { project, tasks, canRun, active, openTaskId, openMode, events, onOpen, onRun, onCancel, onCreated, onError } = props;
   const [title, setTitle] = useState("");
   const [prompt, setPrompt] = useState("");
   const [saving, setSaving] = useState(false);
@@ -213,9 +221,15 @@ function TaskPanel(props: {
                   Executar
                 </button>
               )}{" "}
-              <button onClick={() => onOpen(t.id)}>Ver execução</button>
+              <button onClick={() => onOpen(t.id, "live")}>Ver execução</button>{" "}
+              <button onClick={() => onOpen(t.id, "history")}>Histórico</button>
               <span className="muted prompt">{t.prompt}</span>
-              {openTaskId === t.id && <RunView events={events} running={active.has(t.id)} />}
+              {openTaskId === t.id && openMode === "live" && (
+                <RunView events={events} running={active.has(t.id)} />
+              )}
+              {openTaskId === t.id && openMode === "history" && (
+                <History taskId={t.id} reloadKey={active.has(t.id)} />
+              )}
             </li>
           ))}
         </ul>

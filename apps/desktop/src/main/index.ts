@@ -4,7 +4,7 @@ import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { ClaudeCodeProvider } from "@merge/providers";
 import { Runner } from "@merge/runner";
 import { SqliteStore } from "@merge/store";
-import { Channels } from "../shared/api";
+import { Channels, type RunSummary } from "../shared/api";
 
 /** Active runs by task id, so they can be cancelled. */
 const running = new Map<string, AbortController>();
@@ -56,6 +56,13 @@ function registerIpc(store: SqliteStore, runner: Runner): void {
   ipcMain.handle(Channels.runsCancel, (_e, taskId: string) => {
     running.get(taskId)?.abort();
   });
+  ipcMain.handle(Channels.runsList, (_e, taskId: string): RunSummary[] =>
+    store.listRuns(taskId).map((run) => {
+      const finished = store.listEvents(run.id).find((e) => e.type === "run.finished");
+      return { ...run, costUsd: finished?.type === "run.finished" ? finished.costUsd : undefined };
+    }),
+  );
+  ipcMain.handle(Channels.runsEvents, (_e, runId: string) => store.listEvents(runId));
 
   ipcMain.handle(Channels.providersList, async () =>
     Promise.all(
