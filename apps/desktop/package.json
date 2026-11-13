@@ -1,0 +1,28 @@
+{
+  "name": "@merge/desktop",
+  "version": "0.0.0",
+  "private": true,
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "tsc -b ../.. && electron-vite dev",
+    "build": "tsc -b ../.. && electron-vite build",
+    "start": "electron-vite preview",
+    "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json"
+  },
+  "dependencies": {
+    "@merge/core": "*",
+    "@merge/providers": "*",
+    "@merge/runner": "*",
+    "@merge/store": "*",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "electron": "^45.3.2",
+    "electron-vite": "^6.0.0",
+    "vite": "^8.3.8"
+  }
+}
