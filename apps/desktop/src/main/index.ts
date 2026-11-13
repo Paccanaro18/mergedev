@@ -8,7 +8,7 @@ import type { AgentEvent, PermissionDecision, PermissionMode, ProviderSettings }
 import { Runner } from "@merge/runner";
 import { SqliteStore } from "@merge/store";
 import { WorktreeManager, type Workspace } from "@merge/workspace";
-import { Channels, type RunChanges, type RunSummary } from "../shared/api";
+import { Channels, type RunChanges, type RunSummary, type StartOptions } from "../shared/api";
 
 const execFileAsync = promisify(execFile);
 
@@ -24,9 +24,6 @@ async function gitSucceeds(cwd: string, args: string[]): Promise<boolean> {
 
 /** An isolated run needs a git repository with at least one commit to branch from. */
 const canIsolate = (projectPath: string) => gitSucceeds(projectPath, ["rev-parse", "--verify", "HEAD"]);
-
-/** A new instruction continuing the conversation of an earlier run. */
-type FollowUp = { resumeFromRunId: string; prompt: string };
 
 const PERMISSION_MODES: PermissionMode[] = ["default", "acceptEdits", "plan", "bypassPermissions"];
 
@@ -102,8 +99,11 @@ function registerIpc(store: SqliteStore, runner: Runner, worktrees: WorktreeMana
       return store.createTask({ projectId: input.projectId, title, prompt });
     },
   );
-  ipcMain.handle(Channels.runsStart, async (event, taskId: string, followUp?: FollowUp) => {
+  ipcMain.handle(Channels.runsStart, async (event, taskId: string, options?: StartOptions) => {
     if (running.has(taskId)) throw new Error("Esta tarefa já está em execução.");
+    const followUp = options?.followUp;
+    // Isolation is on unless the user turned it off for this run.
+    const wantsIsolation = options?.isolate !== false;
     if (followUp && !followUp.prompt?.trim()) throw new Error("Escreva a nova instrução.");
     const controller = new AbortController();
     running.set(taskId, controller);
@@ -112,8 +112,8 @@ function registerIpc(store: SqliteStore, runner: Runner, worktrees: WorktreeMana
       const project = task && store.getProject(task.projectId);
       // A follow-up continues where the earlier run was: the runner reuses that run's worktree, or
       // the project folder when it was not isolated (a session only resumes from the same folder).
-      const isolate = !followUp && project ? await canIsolate(project.path) : false;
-      if (!followUp && !isolate && !event.sender.isDestroyed()) {
+      const isolate = !followUp && wantsIsolation && project ? await canIsolate(project.path) : false;
+      if (!followUp && wantsIsolation && !isolate && !event.sender.isDestroyed()) {
         event.sender.send(Channels.runsNotice, {
           taskId,
           message:
