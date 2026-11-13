@@ -1,7 +1,9 @@
 import type { AgentEvent, Project, Task } from "@merge/core";
 import { useEffect, useState, type FormEvent } from "react";
-import type { MergeApi } from "../../shared/api";
+import type { MergeApi, StartOptions } from "../../shared/api";
 import { History } from "./History";
+import { RunFooter } from "./RunFooter";
+import { Settings } from "./Settings";
 import { hasPendingPermission, RunView } from "./RunView";
 
 type ProviderInfo = Awaited<ReturnType<MergeApi["providers"]["list"]>>[number];
@@ -12,6 +14,26 @@ function errorMessage(err: unknown): string {
   return text.replace(/^Error invoking remote method '[^']*': (Error: )?/, "");
 }
 
+const isolateKey = (projectId: string) => `merge.isolate.${projectId}`;
+
+/** Isolated runs are the default; only an explicit "off" is stored. */
+function readIsolatePreference(projectId: string): boolean {
+  try {
+    return localStorage.getItem(isolateKey(projectId)) !== "off";
+  } catch {
+    return true;
+  }
+}
+
+function saveIsolatePreference(projectId: string, value: boolean): void {
+  try {
+    if (value) localStorage.removeItem(isolateKey(projectId));
+    else localStorage.setItem(isolateKey(projectId), "off");
+  } catch {
+    // Storage unavailable: the choice just applies until the app is closed.
+  }
+}
+
 export function App() {
   const [projects, setProjects] = useState<Project[] | null>(null);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
@@ -20,11 +42,17 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   /** Live events by task id, kept while the app is open. */
   const [live, setLive] = useState<Record<string, AgentEvent[]>>({});
+  /** Id of the run currently shown live for each task. */
+  const [liveRunIds, setLiveRunIds] = useState<Record<string, string>>({});
+  /** Warnings about the run that is starting, by task id (e.g. "will not be isolated"). */
+  const [notices, setNotices] = useState<Record<string, string>>({});
   const [active, setActive] = useState<Set<string>>(new Set());
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [view, setView] = useState<"tasks" | "settings">("tasks");
   const [openMode, setOpenMode] = useState<"live" | "history">("live");
 
   const fail = (err: unknown) => setError(errorMessage(err));
+  const reloadProviders = () => void window.merge.providers.list().then(setProviders).catch(fail);
 
   useEffect(() => {
     void window.merge.projects
@@ -35,9 +63,17 @@ export function App() {
       })
       .catch(fail);
     void window.merge.providers.list().then(setProviders).catch(fail);
-    return window.merge.runs.onEvent(({ taskId, event }) =>
-      setLive((cur) => ({ ...cur, [taskId]: [...(cur[taskId] ?? []), event] })),
+    const offEvent = window.merge.runs.onEvent(({ taskId, runId, event }) => {
+      setLive((cur) => ({ ...cur, [taskId]: [...(cur[taskId] ?? []), event] }));
+      setLiveRunIds((cur) => (cur[taskId] === runId ? cur : { ...cur, [taskId]: runId }));
+    });
+    const offNotice = window.merge.runs.onNotice(({ taskId, message }) =>
+      setNotices((cur) => ({ ...cur, [taskId]: message })),
     );
+    return () => {
+      offEvent();
+      offNotice();
+    };
   }, []);
 
   useEffect(() => {
@@ -53,15 +89,23 @@ export function App() {
     };
   }, [selectedId]);
 
-  async function runTask(taskId: string) {
+  async function runTask(taskId: string, options?: StartOptions) {
     setError(null);
     setLive((cur) => ({ ...cur, [taskId]: [] }));
+    setLiveRunIds((cur) => {
+      const { [taskId]: _old, ...rest } = cur;
+      return rest;
+    });
+    setNotices((cur) => {
+      const { [taskId]: _old, ...rest } = cur;
+      return rest;
+    });
     setOpenTaskId(taskId);
     setOpenMode("live");
     setActive((cur) => new Set(cur).add(taskId));
     setTasks((cur) => cur?.map((t) => (t.id === taskId ? { ...t, status: "running" } : t)) ?? cur);
     try {
-      await window.merge.runs.start(taskId);
+      await window.merge.runs.start(taskId, options);
     } catch (err) {
       fail(err);
     } finally {
@@ -104,7 +148,10 @@ export function App() {
               <li key={p.id}>
                 <button
                   className={`project${p.id === selectedId ? " selected" : ""}`}
-                  onClick={() => setSelectedId(p.id)}
+                  onClick={() => {
+                    setSelectedId(p.id);
+                    setView("tasks");
+                  }}
                 >
                   <strong>{p.name}</strong>
                   <span className="muted path">{p.path}</span>
@@ -122,11 +169,12 @@ export function App() {
             <li key={p.id}>
               <strong>{p.displayName}</strong>{" "}
               <span className={p.status.available ? "ok" : "bad"}>
-                {p.status.available ? "disponível" : `indisponível: ${p.status.reason ?? "?"}`}
+                {p.status.available ? "instalado" : `indisponível: ${p.status.reason ?? "?"}`}
               </span>
             </li>
           ))}
         </ul>
+        <button onClick={() => setView("settings")}>Configurações</button>
       </aside>
       <main className="content">
         {error && (
@@ -135,7 +183,9 @@ export function App() {
             <button onClick={() => setError(null)}>fechar</button>
           </div>
         )}
-        {selected ? (
+        {view === "settings" ? (
+          <Settings projects={projects ?? []} providers={providers} onSaved={reloadProviders} onError={fail} />
+        ) : selected ? (
           <TaskPanel
             project={selected}
             tasks={tasks}
@@ -143,12 +193,15 @@ export function App() {
             active={active}
             openTaskId={openTaskId}
             events={openTaskId ? (live[openTaskId] ?? []) : []}
+            liveRunId={openTaskId ? liveRunIds[openTaskId] : undefined}
+            notice={openTaskId ? notices[openTaskId] : undefined}
             openMode={openMode}
             onOpen={(id, mode) => {
               setOpenTaskId(id);
               setOpenMode(mode);
             }}
-            onRun={(id) => void runTask(id)}
+            onRun={(id, isolate) => void runTask(id, { isolate })}
+            onFollowUp={(id, runId, prompt) => void runTask(id, { followUp: { resumeFromRunId: runId, prompt } })}
             onCancel={(id) => void window.merge.runs.cancel(id)}
             onCreated={(task) => setTasks((cur) => [...(cur ?? []), task])}
             onError={fail}
@@ -172,17 +225,27 @@ function TaskPanel(props: {
   active: Set<string>;
   openTaskId: string | null;
   events: AgentEvent[];
+  liveRunId?: string;
+  notice?: string;
   openMode: "live" | "history";
   onOpen: (taskId: string, mode: "live" | "history") => void;
-  onRun: (taskId: string) => void;
+  onRun: (taskId: string, isolate: boolean) => void;
+  onFollowUp: (taskId: string, runId: string, prompt: string) => void;
   onCancel: (taskId: string) => void;
   onCreated: (task: Task) => void;
   onError: (err: unknown) => void;
 }) {
-  const { project, tasks, canRun, active, openTaskId, openMode, events, onOpen, onRun, onCancel, onCreated, onError } = props;
+  const { project, tasks, canRun, active, openTaskId, openMode, events, liveRunId, notice, onOpen, onRun, onFollowUp, onCancel, onCreated, onError } = props;
   const [title, setTitle] = useState("");
   const [prompt, setPrompt] = useState("");
   const [saving, setSaving] = useState(false);
+  /** Run in an isolated worktree. The choice is remembered per project, on this machine. */
+  const [isolate, setIsolate] = useState(() => readIsolatePreference(project.id));
+  useEffect(() => setIsolate(readIsolatePreference(project.id)), [project.id]);
+  function changeIsolate(value: boolean) {
+    setIsolate(value);
+    saveIsolatePreference(project.id, value);
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -220,9 +283,17 @@ function TaskPanel(props: {
               {active.has(t.id) ? (
                 <button onClick={() => onCancel(t.id)}>Cancelar</button>
               ) : (
-                <button disabled={!canRun} title={canRun ? "" : "Claude Code indisponível"} onClick={() => onRun(t.id)}>
-                  Executar
-                </button>
+                <>
+                  <button disabled={!canRun} title={canRun ? "" : "Claude Code indisponível"} onClick={() => onRun(t.id, isolate)}>
+                    Executar
+                  </button>{" "}
+                  <label
+                    className="isolate"
+                    title="O agente trabalha numa cópia (git worktree) e você decide depois se mantém a branch. Sem isso, ele edita a pasta do projeto diretamente."
+                  >
+                    <input type="checkbox" checked={isolate} onChange={(e) => changeIsolate(e.target.checked)} /> worktree isolado
+                  </label>
+                </>
               )}{" "}
               <button onClick={() => onOpen(t.id, "live")}>Ver execução</button>{" "}
               <button onClick={() => onOpen(t.id, "history")}>Histórico</button>
@@ -240,8 +311,24 @@ function TaskPanel(props: {
                   }
                 />
               )}
+              {openTaskId === t.id && openMode === "live" && notice && <p className="warn">{notice}</p>}
+              {openTaskId === t.id && openMode === "live" && liveRunId && (
+                <RunFooter
+                  taskId={t.id}
+                  runId={liveRunId}
+                  events={events}
+                  running={active.has(t.id)}
+                  reloadKey={active.has(t.id)}
+                  onFollowUp={(runId, prompt) => onFollowUp(t.id, runId, prompt)}
+                />
+              )}
               {openTaskId === t.id && openMode === "history" && (
-                <History taskId={t.id} reloadKey={active.has(t.id)} />
+                <History
+                  taskId={t.id}
+                  reloadKey={active.has(t.id)}
+                  running={active.has(t.id)}
+                  onFollowUp={(runId, prompt) => onFollowUp(t.id, runId, prompt)}
+                />
               )}
             </li>
           ))}
