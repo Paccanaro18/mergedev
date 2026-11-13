@@ -1,13 +1,16 @@
 /**
  * Camada de movimento (melhoria progressiva). Sem este script a página
  * continua completa; aqui ligamos o que CSS sozinho não faz:
- *  - header fixo com barra de progresso e destaque da seção atual;
  *  - cards que entram em sequência ao rolar (reveal);
- *  - parallax do fundo, luz que segue o cursor (hero e cards);
+ *  - luz que segue o cursor (hero e cards);
+ *  - pausa das animações que estão fora da tela;
  *  - botão "Pausar animações" (WCAG 2.2.2) e respeito a prefers-reduced-motion.
  *
- * Só manipula o CSSOM (`style.setProperty`, classes e atributos), então roda
- * sob CSP estrita sem 'unsafe-inline'.
+ * Desempenho: NADA é escrito no <html> durante a rolagem (mudar uma variável
+ * CSS na raiz invalida o estilo da página inteira e trava a rolagem). Os
+ * únicos writes em movimento são `transform` de um elemento pequeno (luz do
+ * hero) e variáveis no card sob o cursor. Só usa o CSSOM, então roda sob CSP
+ * estrita sem 'unsafe-inline'.
  */
 
 type MotionPref = "on" | "off";
@@ -36,57 +39,40 @@ function savePref(value: MotionPref): void {
 
 let motionOn = (readPref() ?? (reduceQuery.matches ? "off" : "on")) === "on";
 
-/* ---------- Scroll: progresso, header e parallax ---------- */
+/* ---------- Pausa a decoração pesada enquanto rola ---------- */
 
-const header = document.querySelector<HTMLElement>("[data-header]");
-let scrollTicking = false;
+// Atributo no <body> (e não no <html>) e só quando o estado muda: custa
+// uma invalidação mínima, ao contrário de escrever variáveis na raiz a cada frame.
+let scrolling = false;
+let scrollTimer = 0;
 
-function updateScroll(): void {
-  scrollTicking = false;
-  const y = window.scrollY;
-  const max = root.scrollHeight - window.innerHeight;
-  root.style.setProperty("--progress", String(max > 0 ? Math.min(1, y / max) : 0));
-  root.style.setProperty("--sy", motionOn ? String(Math.round(y)) : "0");
-  header?.toggleAttribute("data-scrolled", y > 8);
-}
+window.addEventListener(
+  "scroll",
+  () => {
+    if (!scrolling) {
+      scrolling = true;
+      document.body.setAttribute("data-scrolling", "");
+    }
+    window.clearTimeout(scrollTimer);
+    scrollTimer = window.setTimeout(() => {
+      scrolling = false;
+      document.body.removeAttribute("data-scrolling");
+    }, 160);
+  },
+  { passive: true },
+);
 
-function onScroll(): void {
-  if (scrollTicking) return;
-  scrollTicking = true;
-  requestAnimationFrame(updateScroll);
-}
+/* ---------- Pausa o que está fora da tela ---------- */
 
-window.addEventListener("scroll", onScroll, { passive: true });
-window.addEventListener("resize", onScroll, { passive: true });
-
-/* ---------- Seção atual no menu ---------- */
-
-const spyLinks = new Map<string, HTMLAnchorElement>();
-document.querySelectorAll<HTMLAnchorElement>("[data-spy]").forEach((link) => {
-  if (link.dataset.spy) spyLinks.set(link.dataset.spy, link);
-});
-
-if (spyLinks.size > 0) {
-  let current: string | null = null;
-  const spy = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        const id = entry.target.id;
-        if (entry.isIntersecting) current = id;
-        else if (current === id) current = null;
-      }
-      spyLinks.forEach((link, id) => {
-        if (id === current) link.setAttribute("aria-current", "true");
-        else link.removeAttribute("aria-current");
-      });
-    },
-    { rootMargin: "-45% 0px -50% 0px" },
-  );
-  spyLinks.forEach((_, id) => {
-    const section = document.getElementById(id);
-    if (section) spy.observe(section);
-  });
-}
+const liveObserver = new IntersectionObserver(
+  (entries) => {
+    for (const entry of entries) {
+      (entry.target as HTMLElement).toggleAttribute("data-offscreen", !entry.isIntersecting);
+    }
+  },
+  { rootMargin: "80px 0px 80px 0px" },
+);
+document.querySelectorAll<HTMLElement>("[data-live]").forEach((el) => liveObserver.observe(el));
 
 /* ---------- Reveal ao rolar ---------- */
 
@@ -138,32 +124,45 @@ function stopReveal(): void {
 /* ---------- Luz que segue o cursor ---------- */
 
 const hero = document.querySelector<HTMLElement>("[data-hero]");
+const glow = document.querySelector<HTMLElement>("[data-hero-glow]");
+let pointer: { x: number; y: number; target: EventTarget | null } | null = null;
+let pointerTicking = false;
 
-function onPointerMove(event: PointerEvent): void {
-  if (!motionOn || !canHover.matches) return;
-  const target = event.target;
-  if (!(target instanceof Element)) return;
+function paintPointer(): void {
+  pointerTicking = false;
+  if (!pointer || !motionOn) return;
+  const { x, y, target } = pointer;
 
-  const card = target.closest<HTMLElement>(".feature, .step");
-  if (card) {
-    const rect = card.getBoundingClientRect();
-    card.style.setProperty("--mx", `${Math.round(event.clientX - rect.left)}px`);
-    card.style.setProperty("--my", `${Math.round(event.clientY - rect.top)}px`);
+  if (target instanceof Element) {
+    const card = target.closest<HTMLElement>(".feature, .step");
+    if (card) {
+      const rect = card.getBoundingClientRect();
+      card.style.setProperty("--mx", `${Math.round(x - rect.left)}px`);
+      card.style.setProperty("--my", `${Math.round(y - rect.top)}px`);
+    }
   }
 
-  if (hero) {
+  if (hero && glow) {
     const rect = hero.getBoundingClientRect();
-    const inside = event.clientY >= rect.top && event.clientY <= rect.bottom;
-    hero.style.setProperty("--hglow", inside ? "1" : "0");
-    if (inside) {
-      hero.style.setProperty("--hx", `${Math.round(event.clientX - rect.left)}px`);
-      hero.style.setProperty("--hy", `${Math.round(event.clientY - rect.top)}px`);
-    }
+    const inside = y >= rect.top && y <= rect.bottom;
+    glow.classList.toggle("is-on", inside);
+    if (inside) glow.style.transform = `translate3d(${Math.round(x - rect.left)}px, ${Math.round(y - rect.top)}px, 0)`;
   }
 }
 
-document.addEventListener("pointermove", onPointerMove, { passive: true });
-document.addEventListener("pointerleave", () => hero?.style.setProperty("--hglow", "0"));
+document.addEventListener(
+  "pointermove",
+  (event) => {
+    if (!motionOn || !canHover.matches) return;
+    pointer = { x: event.clientX, y: event.clientY, target: event.target };
+    if (!pointerTicking) {
+      pointerTicking = true;
+      requestAnimationFrame(paintPointer);
+    }
+  },
+  { passive: true },
+);
+document.addEventListener("pointerleave", () => glow?.classList.remove("is-on"));
 
 /* ---------- Botão "Pausar animações" ---------- */
 
@@ -177,8 +176,10 @@ function applyMotion(): void {
     toggle.dataset.state = motionOn ? "playing" : "paused";
   }
   if (motionOn) startReveal();
-  else stopReveal();
-  updateScroll();
+  else {
+    stopReveal();
+    glow?.classList.remove("is-on");
+  }
 }
 
 if (toggle) {

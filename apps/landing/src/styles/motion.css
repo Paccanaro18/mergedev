@@ -24,12 +24,6 @@
   background-size: 64px 64px;
   -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 0%, transparent 100%);
   mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 0%, transparent 100%);
-  transform: translate3d(0, calc(var(--sy, 0) * -0.1px), 0);
-}
-@supports (transform: translateY(mod(10px, 4px))) {
-  .bg__grid {
-    transform: translate3d(0, mod(calc(var(--sy, 0) * -0.1px), 64px), 0);
-  }
 }
 .bg__blob {
   position: absolute;
@@ -42,7 +36,6 @@
   width: 72vmax;
   height: 72vmax;
   background: radial-gradient(closest-side, rgb(var(--accent-rgb) / 0.17), transparent);
-  translate: 0 calc(var(--sy, 0) * -0.05px);
   animation: drift-a 28s ease-in-out infinite alternate;
 }
 .bg__blob--b {
@@ -51,70 +44,28 @@
   width: 62vmax;
   height: 62vmax;
   background: radial-gradient(closest-side, rgb(var(--accent-rgb) / 0.11), transparent);
-  translate: 0 calc(var(--sy, 0) * -0.09px);
   animation: drift-b 34s ease-in-out infinite alternate;
 }
 @keyframes drift-a {
   from {
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(0, 0, 0);
   }
   to {
-    transform: translate3d(20vmax, 14vmax, 0) scale(1.18);
+    transform: translate3d(24vmax, 16vmax, 0);
   }
 }
 @keyframes drift-b {
   from {
-    transform: translate3d(0, 0, 0) scale(1);
+    transform: translate3d(0, 0, 0);
   }
   to {
-    transform: translate3d(-16vmax, -18vmax, 0) scale(1.22);
+    transform: translate3d(-20vmax, -20vmax, 0);
   }
 }
 
-/* ---------- Header fixo ---------- */
-.header {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  transition: background-color 0.3s ease, border-color 0.3s ease;
-  border-bottom: 1px solid transparent;
-}
-.header__inner {
-  transition: padding 0.3s ease;
-}
-.header[data-scrolled] {
-  background: color-mix(in srgb, var(--bg) 80%, transparent);
-  -webkit-backdrop-filter: blur(14px) saturate(1.2);
-  backdrop-filter: blur(14px) saturate(1.2);
-  border-bottom-color: var(--line-soft);
-}
-.header[data-scrolled] .header__inner {
-  padding-block: 16px;
-}
-.header__progress {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
-  background: var(--accent);
-  transform-origin: left center;
-  transform: scaleX(var(--progress, 0));
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-.header[data-scrolled] .header__progress {
-  opacity: 1;
-}
+/* ---------- Menu ---------- */
 .nav a:not(.pill) {
-  text-decoration: underline transparent;
-  text-underline-offset: 8px;
-  text-decoration-thickness: 2px;
-  transition: text-decoration-color 0.2s ease, color 0.2s ease;
-}
-.nav a[aria-current="true"]:not(.pill) {
-  color: var(--accent-ink);
-  text-decoration-color: var(--accent-ink);
+  transition: color 0.2s ease;
 }
 
 /* ---------- Hero ---------- */
@@ -122,18 +73,21 @@
   position: relative;
   overflow: clip;
 }
-.hero::before {
-  content: "";
+.hero__glow {
   position: absolute;
-  inset: 0;
+  left: -280px;
+  top: -280px;
+  width: 560px;
+  height: 560px;
+  border-radius: 50%;
   pointer-events: none;
-  background: radial-gradient(
-    560px circle at var(--hx, 50%) var(--hy, 30%),
-    rgb(var(--accent-rgb) / 0.15),
-    transparent 70%
-  );
-  opacity: var(--hglow, 0);
+  background: radial-gradient(closest-side, rgb(var(--accent-rgb) / 0.15), transparent);
+  opacity: 0;
   transition: opacity 0.5s ease;
+  will-change: transform;
+}
+.hero__glow.is-on {
+  opacity: 1;
 }
 .hero__inner {
   position: relative;
@@ -240,14 +194,14 @@
     background-clip: text;
     -webkit-text-fill-color: transparent;
     color: transparent;
-    animation: shimmer 5.5s ease-in-out 1.8s infinite;
+    animation: shimmer 9s ease-in-out 1.8s infinite;
   }
 }
 @keyframes shimmer {
   0% {
     background-position: 120% 0;
   }
-  55%,
+  16%,
   100% {
     background-position: -60% 0;
   }
@@ -337,15 +291,24 @@
   }
 }
 .window__row--run .status-dot {
-  animation: dot-pulse 2s ease-out infinite;
+  position: relative;
 }
-@keyframes dot-pulse {
-  0% {
-    box-shadow: 0 0 0 0 rgb(217 119 87 / 0.6);
+.window__row--run .status-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgb(217 119 87 / 0.65);
+  animation: dot-ring 2s ease-out infinite;
+}
+@keyframes dot-ring {
+  from {
+    transform: scale(1);
+    opacity: 0.7;
   }
-  70%,
-  100% {
-    box-shadow: 0 0 0 9px rgb(217 119 87 / 0);
+  to {
+    transform: scale(3.4);
+    opacity: 0;
   }
 }
 .caret {
@@ -387,15 +350,25 @@
   }
 }
 .btn--soon {
+  overflow: visible;
+}
+.btn--soon::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 2px solid var(--accent-ink);
+  pointer-events: none;
   animation: ring-soon 2.8s ease-out infinite;
 }
 @keyframes ring-soon {
-  0% {
-    box-shadow: 0 0 0 0 rgb(var(--accent-rgb) / 0.5);
+  from {
+    transform: scale(1);
+    opacity: 0.6;
   }
-  70%,
-  100% {
-    box-shadow: 0 0 0 14px rgb(var(--accent-rgb) / 0);
+  to {
+    transform: scale(1.07, 1.28);
+    opacity: 0;
   }
 }
 
@@ -506,15 +479,26 @@
   transform: translateX(-16px);
 }
 .chip {
-  animation: chip-pulse 2.4s ease-in-out infinite;
+  position: relative;
+  isolation: isolate;
 }
-@keyframes chip-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgb(217 119 87 / 0.55);
+.chip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(217 119 87 / 0.55);
+  animation: chip-ring 2.4s ease-out infinite;
+  z-index: -1;
+}
+@keyframes chip-ring {
+  from {
+    transform: scale(1);
+    opacity: 0.7;
   }
-  50% {
-    box-shadow: 0 0 0 8px rgb(217 119 87 / 0);
+  to {
+    transform: scale(1.6, 1.9);
+    opacity: 0;
   }
 }
 
@@ -588,6 +572,7 @@
   background: repeating-linear-gradient(90deg, currentColor 0 6px, transparent 6px 12px);
   background-size: 12px 2px;
   animation: march 1s linear infinite;
+  container-type: inline-size;
 }
 .diagram__link::after {
   content: "";
@@ -616,7 +601,7 @@
 }
 @keyframes packet-x {
   0% {
-    left: 0;
+    transform: translateX(0);
     opacity: 0;
   }
   12% {
@@ -626,7 +611,7 @@
     opacity: 1;
   }
   100% {
-    left: calc(100% - 10px);
+    transform: translateX(calc(100cqw - 10px));
     opacity: 0;
   }
 }
@@ -647,19 +632,19 @@
 }
 @keyframes packet-out {
   0% {
-    top: -6px;
+    transform: translateY(0);
     opacity: 0;
   }
   10% {
     opacity: 1;
   }
   55% {
-    top: calc(100% - 4px);
+    transform: translateY(42px);
     opacity: 1;
   }
   62%,
   100% {
-    top: calc(100% - 4px);
+    transform: translateY(42px);
     opacity: 0;
   }
 }
@@ -705,6 +690,21 @@
 }
 .faq__item[open] .faq__icon {
   transform: rotate(180deg);
+}
+
+/* ---------- Durante a rolagem: pausa a decoração que repinta ---------- */
+[data-scrolling] .bg__blob,
+[data-scrolling] .shimmer,
+[data-scrolling] .lanes__pulse path {
+  animation-play-state: paused;
+}
+
+/* ---------- Fora da tela: pausa (o JS marca data-offscreen) ---------- */
+[data-offscreen],
+[data-offscreen] *,
+[data-offscreen] *::before,
+[data-offscreen] *::after {
+  animation-play-state: paused !important;
 }
 
 /* ---------- Desligar tudo ---------- */
