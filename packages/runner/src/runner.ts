@@ -1,4 +1,12 @@
-import type { AgentEvent, AgentProvider, Id, Run, Store } from "@merge/core";
+import type {
+  AgentEvent,
+  AgentProvider,
+  Id,
+  PermissionDecision,
+  PermissionRequest,
+  Run,
+  Store,
+} from "@merge/core";
 
 /** Creates an isolated working copy for a run. `WorktreeManager` from @merge/workspace fits this. */
 export interface WorkspaceProvider {
@@ -13,6 +21,8 @@ export interface RunTaskOptions {
   /** Run in an isolated worktree instead of the project folder. Needs a workspace provider. */
   isolate?: boolean;
   signal?: AbortSignal;
+  /** Makes the run interactive: called when the agent needs approval. Resolve to allow or deny. */
+  onPermissionRequest?: (request: PermissionRequest, run: Run) => Promise<PermissionDecision>;
   /** Called for every event as it is produced (after being persisted). */
   onEvent?: (event: AgentEvent, run: Run) => void;
 }
@@ -36,7 +46,7 @@ export class Runner {
     return [...this.providers.values()];
   }
 
-  async runTask(taskId: Id, { providerId, isolate, signal, onEvent }: RunTaskOptions): Promise<Run> {
+  async runTask(taskId: Id, { providerId, isolate, signal, onEvent, onPermissionRequest }: RunTaskOptions): Promise<Run> {
     const task = this.store.getTask(taskId);
     if (!task) throw new Error(`Task not found: ${taskId}`);
     const project = this.store.getProject(task.projectId);
@@ -67,7 +77,13 @@ export class Runner {
         cwd = ws.path;
         emit({ type: "workspace.created", ...ws });
       }
-      for await (const event of provider.run({ prompt: task.prompt, cwd, signal, settings })) {
+      for await (const event of provider.run({
+        prompt: task.prompt,
+        cwd,
+        signal,
+        settings,
+        onPermissionRequest: onPermissionRequest && ((req) => onPermissionRequest(req, run)),
+      })) {
         emit(event);
         if (event.type === "run.finished") ok = event.ok;
       }

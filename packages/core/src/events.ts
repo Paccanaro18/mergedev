@@ -6,5 +6,16 @@ export type AgentEvent =
   | { type: "message"; role: "assistant" | "user"; text: string }
   | { type: "tool.call"; callId: string; name: string; input: unknown }
   | { type: "tool.result"; callId: string; output: string; isError?: boolean }
+  /** The agent paused and waits for the user to allow or deny an action. Answer through RunInput.onPermissionRequest. */
+  | {
+      type: "permission.requested";
+      requestId: string;
+      /** Same id as the matching tool.call, when the provider knows it. */
+      callId?: string;
+      tool: string;
+      input: unknown;
+      description?: string;
+    }
+  | { type: "permission.resolved"; requestId: string; decision: "allow" | "deny"; reason?: string }
   | { type: "run.finished"; ok: boolean; summary?: string; costUsd?: number }
   | { type: "error"; message: string };
