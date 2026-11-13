@@ -1,0 +1,53 @@
+---
+import { REPO_URL } from "../config";
+
+const items = [
+  {
+    q: "O Merge envia meu código para algum servidor?",
+    a: "Não. Tudo roda localmente. Os agentes são os CLIs oficiais, com o seu login.",
+  },
+  {
+    q: "Preciso de uma chave de API?",
+    a: "Não. O Merge controla o CLI já instalado e logado na sua máquina.",
+  },
+  {
+    q: "Quais sistemas são suportados?",
+    a: "Windows, macOS e Linux. Os instaladores ficam nas versões do GitHub (GitHub Releases).",
+  },
+  {
+    q: "O instalador é assinado?",
+    a: "No MVP, pode não ser. Nesse caso o Windows (SmartScreen) e o macOS (Gatekeeper) mostram um aviso na primeira abertura. A seção “Baixar” explica como seguir e como conferir o SHA-256 do arquivo.",
+  },
+];
+---
+
+<section class="section" id="faq" aria-labelledby="faq-titulo">
+  <div class="container faq">
+    <div class="faq__intro">
+      <h2 class="h2" id="faq-titulo">Perguntas frequentes</h2>
+      <p>
+        Não achou o que procurava? Abra uma issue no{" "}
+        <a href={`${REPO_URL}/issues`} target="_blank" rel="noopener noreferrer">GitHub<span class="sr-only"> (abre em nova aba)</span></a>.
+      </p>
+    </div>
+
+    <div class="faq__list">
+      {
+        items.map((item, index) => (
+          <details class="faq__item" open={index === 0}>
+            <summary class="faq__q">
+              <span>{item.q}</span>
+              <span class="faq__icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 18 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+                  <path d="M3 9h12"></path>
+                  <path class="v" d="M9 3v12"></path>
+                </svg>
+              </span>
+            </summary>
+            <p class="faq__a">{item.a}</p>
+          </details>
+        ))
+      }
+    </div>
+  </div>
+</section>

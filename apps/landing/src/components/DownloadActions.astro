@@ -1,0 +1,83 @@
+---
+import {
+  INSTALLERS,
+  RELEASE_PUBLISHED,
+  RELEASES_URL,
+  REPO_URL,
+  downloadHref,
+} from "../config";
+
+interface Props {
+  /** Mostra o botão secundário "Ver no GitHub". */
+  github?: boolean;
+}
+
+const { github = true } = Astro.props;
+const soonLabel = "Download em breve";
+---
+
+<!--
+  Sem JS: o botão principal leva à página de releases e todos os sistemas
+  ficam listados. Com JS (src/scripts/download.ts): o botão passa a apontar
+  para o instalador do sistema detectado.
+-->
+<div class="download" data-download data-published={String(RELEASE_PUBLISHED)}>
+  <div class="download__row">
+    <a
+      class:list={["btn", RELEASE_PUBLISHED ? "btn--primary" : "btn--soon"]}
+      href={RELEASES_URL}
+      rel="noopener noreferrer"
+      data-download-primary
+    >
+      <svg
+        width="24"
+        height="24"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke-width="2.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+        focusable="false"
+      >
+        <path d="M12 3v12M6 10l6 6 6-6M4 20h16"></path>
+      </svg>
+      <span data-download-label>{RELEASE_PUBLISHED ? "Baixar o Merge" : soonLabel}</span>
+    </a>
+    {
+      github && (
+        <a class="btn btn--ghost" href={REPO_URL} target="_blank" rel="noopener noreferrer">
+          Ver no GitHub<span class="sr-only"> (abre em nova aba)</span>
+        </a>
+      )
+    }
+  </div>
+
+  <div class="download__others">
+    <span>{RELEASE_PUBLISHED ? "Baixar para:" : "Instaladores para:"}</span>
+    <ul>
+      {
+        INSTALLERS.map((installer) => (
+          <li data-os-item={installer.id}>
+            <a
+              href={downloadHref(installer)}
+              rel="noopener noreferrer"
+              data-os-link={installer.id}
+              data-primary-label={RELEASE_PUBLISHED ? `Baixar para ${installer.label}` : soonLabel}
+            >
+              {installer.label}
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+
+  {
+    !RELEASE_PUBLISHED && (
+      <p class="download__status">
+        Os instaladores ainda não foram publicados. Acompanhe os lançamentos no GitHub.
+      </p>
+    )
+  }
+</div>
