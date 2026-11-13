@@ -93,3 +93,26 @@ button { font: inherit; color: inherit; cursor: pointer; }
   border-radius: 6px;
 }
 .task-form .primary { align-self: flex-start; }
+
+li button { padding: 2px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+li button:disabled { opacity: 0.5; cursor: default; }
+.run { margin: 8px 0 4px; padding: 8px 12px; border-left: 2px solid var(--border); }
+.run p { margin: 6px 0; white-space: pre-wrap; }
+.msg.user { color: var(--muted); }
+.tool { margin: 6px 0; font-size: 13px; }
+.tool summary { cursor: pointer; }
+.tool pre { margin: 4px 0; padding: 6px 8px; max-height: 200px; overflow: auto; background: var(--panel); border-radius: 6px; font-size: 12px; white-space: pre-wrap; }
+
+.history { margin: 8px 0; }
+.run-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  padding: 4px 8px;
+  text-align: left;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+.run-row:hover, .run-row.selected { border-color: var(--border); background: var(--panel); }

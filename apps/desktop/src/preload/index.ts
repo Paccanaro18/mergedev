@@ -1,5 +1,5 @@
-import { contextBridge, ipcRenderer } from "electron";
-import { Channels, type MergeApi } from "../shared/api";
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
+import { Channels, type MergeApi, type RunEventMessage } from "../shared/api";
 
 const api: MergeApi = {
   projects: {
@@ -12,6 +12,17 @@ const api: MergeApi = {
   },
   providers: {
     list: () => ipcRenderer.invoke(Channels.providersList),
+  },
+  runs: {
+    start: (taskId) => ipcRenderer.invoke(Channels.runsStart, taskId),
+    cancel: (taskId) => ipcRenderer.invoke(Channels.runsCancel, taskId),
+    list: (taskId) => ipcRenderer.invoke(Channels.runsList, taskId),
+    events: (runId) => ipcRenderer.invoke(Channels.runsEvents, runId),
+    onEvent: (listener) => {
+      const handler = (_e: IpcRendererEvent, message: RunEventMessage) => listener(message);
+      ipcRenderer.on(Channels.runsEvent, handler);
+      return () => ipcRenderer.removeListener(Channels.runsEvent, handler);
+    },
   },
 };
 

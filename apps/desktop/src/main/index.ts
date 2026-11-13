@@ -4,7 +4,10 @@ import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { ClaudeCodeProvider } from "@merge/providers";
 import { Runner } from "@merge/runner";
 import { SqliteStore } from "@merge/store";
-import { Channels } from "../shared/api";
+import { Channels, type RunSummary } from "../shared/api";
+
+/** Active runs by task id, so they can be cancelled. */
+const running = new Map<string, AbortController>();
 
 function registerIpc(store: SqliteStore, runner: Runner): void {
   ipcMain.handle(Channels.projectsList, () => store.listProjects());
@@ -32,6 +35,35 @@ function registerIpc(store: SqliteStore, runner: Runner): void {
       return store.createTask({ projectId: input.projectId, title, prompt });
     },
   );
+  ipcMain.handle(Channels.runsStart, async (event, taskId: string) => {
+    if (running.has(taskId)) throw new Error("Esta tarefa já está em execução.");
+    const controller = new AbortController();
+    running.set(taskId, controller);
+    try {
+      return await runner.runTask(taskId, {
+        providerId: "claude-code",
+        signal: controller.signal,
+        onEvent: (e, run) => {
+          if (!event.sender.isDestroyed()) {
+            event.sender.send(Channels.runsEvent, { taskId, runId: run.id, event: e });
+          }
+        },
+      });
+    } finally {
+      running.delete(taskId);
+    }
+  });
+  ipcMain.handle(Channels.runsCancel, (_e, taskId: string) => {
+    running.get(taskId)?.abort();
+  });
+  ipcMain.handle(Channels.runsList, (_e, taskId: string): RunSummary[] =>
+    store.listRuns(taskId).map((run) => {
+      const finished = store.listEvents(run.id).find((e) => e.type === "run.finished");
+      return { ...run, costUsd: finished?.type === "run.finished" ? finished.costUsd : undefined };
+    }),
+  );
+  ipcMain.handle(Channels.runsEvents, (_e, runId: string) => store.listEvents(runId));
+
   ipcMain.handle(Channels.providersList, async () =>
     Promise.all(
       runner.listProviders().map(async (p) => ({
@@ -88,6 +120,7 @@ void app.whenReady().then(() => {
   }
 
   app.on("window-all-closed", () => {
+    for (const controller of running.values()) controller.abort();
     store.close();
     app.quit();
   });
