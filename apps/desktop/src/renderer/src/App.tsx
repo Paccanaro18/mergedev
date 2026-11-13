@@ -1,6 +1,7 @@
 import type { AgentEvent, Project, Task } from "@merge/core";
 import { useEffect, useState, type FormEvent } from "react";
 import type { MergeApi } from "../../shared/api";
+import { Changes } from "./Changes";
 import { History } from "./History";
 import { hasPendingPermission, RunView } from "./RunView";
 
@@ -20,6 +21,10 @@ export function App() {
   const [error, setError] = useState<string | null>(null);
   /** Live events by task id, kept while the app is open. */
   const [live, setLive] = useState<Record<string, AgentEvent[]>>({});
+  /** Id of the run currently shown live for each task. */
+  const [liveRunIds, setLiveRunIds] = useState<Record<string, string>>({});
+  /** Warnings about the run that is starting, by task id (e.g. "will not be isolated"). */
+  const [notices, setNotices] = useState<Record<string, string>>({});
   const [active, setActive] = useState<Set<string>>(new Set());
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [openMode, setOpenMode] = useState<"live" | "history">("live");
@@ -35,9 +40,17 @@ export function App() {
       })
       .catch(fail);
     void window.merge.providers.list().then(setProviders).catch(fail);
-    return window.merge.runs.onEvent(({ taskId, event }) =>
-      setLive((cur) => ({ ...cur, [taskId]: [...(cur[taskId] ?? []), event] })),
+    const offEvent = window.merge.runs.onEvent(({ taskId, runId, event }) => {
+      setLive((cur) => ({ ...cur, [taskId]: [...(cur[taskId] ?? []), event] }));
+      setLiveRunIds((cur) => (cur[taskId] === runId ? cur : { ...cur, [taskId]: runId }));
+    });
+    const offNotice = window.merge.runs.onNotice(({ taskId, message }) =>
+      setNotices((cur) => ({ ...cur, [taskId]: message })),
     );
+    return () => {
+      offEvent();
+      offNotice();
+    };
   }, []);
 
   useEffect(() => {
@@ -56,6 +69,14 @@ export function App() {
   async function runTask(taskId: string) {
     setError(null);
     setLive((cur) => ({ ...cur, [taskId]: [] }));
+    setLiveRunIds((cur) => {
+      const { [taskId]: _old, ...rest } = cur;
+      return rest;
+    });
+    setNotices((cur) => {
+      const { [taskId]: _old, ...rest } = cur;
+      return rest;
+    });
     setOpenTaskId(taskId);
     setOpenMode("live");
     setActive((cur) => new Set(cur).add(taskId));
@@ -143,6 +164,8 @@ export function App() {
             active={active}
             openTaskId={openTaskId}
             events={openTaskId ? (live[openTaskId] ?? []) : []}
+            liveRunId={openTaskId ? liveRunIds[openTaskId] : undefined}
+            notice={openTaskId ? notices[openTaskId] : undefined}
             openMode={openMode}
             onOpen={(id, mode) => {
               setOpenTaskId(id);
@@ -172,6 +195,8 @@ function TaskPanel(props: {
   active: Set<string>;
   openTaskId: string | null;
   events: AgentEvent[];
+  liveRunId?: string;
+  notice?: string;
   openMode: "live" | "history";
   onOpen: (taskId: string, mode: "live" | "history") => void;
   onRun: (taskId: string) => void;
@@ -179,7 +204,7 @@ function TaskPanel(props: {
   onCreated: (task: Task) => void;
   onError: (err: unknown) => void;
 }) {
-  const { project, tasks, canRun, active, openTaskId, openMode, events, onOpen, onRun, onCancel, onCreated, onError } = props;
+  const { project, tasks, canRun, active, openTaskId, openMode, events, liveRunId, notice, onOpen, onRun, onCancel, onCreated, onError } = props;
   const [title, setTitle] = useState("");
   const [prompt, setPrompt] = useState("");
   const [saving, setSaving] = useState(false);
@@ -239,6 +264,10 @@ function TaskPanel(props: {
                     )
                   }
                 />
+              )}
+              {openTaskId === t.id && openMode === "live" && notice && <p className="warn">{notice}</p>}
+              {openTaskId === t.id && openMode === "live" && liveRunId && (
+                <Changes taskId={t.id} runId={liveRunId} reloadKey={active.has(t.id)} />
               )}
               {openTaskId === t.id && openMode === "history" && (
                 <History taskId={t.id} reloadKey={active.has(t.id)} />

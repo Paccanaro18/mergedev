@@ -1,6 +1,7 @@
 import type { AgentEvent } from "@merge/core";
 import { useEffect, useState } from "react";
 import type { RunSummary } from "../../shared/api";
+import { Changes } from "./Changes";
 import { RunView } from "./RunView";
 
 const STATUS_LABEL: Record<RunSummary["status"], string> = {
@@ -55,7 +56,12 @@ export function History({ taskId, reloadKey }: { taskId: string; reloadKey: unkn
             <span className="muted">{duration(run)}</span>
             <span className="muted">{run.costUsd !== undefined ? `US$ ${run.costUsd.toFixed(4)}` : "—"}</span>
           </button>
-          {run.id === openRunId && <RunView events={events} running={false} />}
+          {run.id === openRunId && (
+            <>
+              <RunView events={events} running={false} />
+              <Changes taskId={taskId} runId={run.id} reloadKey={reloadKey} />
+            </>
+          )}
         </div>
       ))}
     </div>
