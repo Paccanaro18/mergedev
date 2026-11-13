@@ -12,6 +12,11 @@ const api: MergeApi = {
   },
   providers: {
     list: () => ipcRenderer.invoke(Channels.providersList),
+    check: (providerId, projectId) => ipcRenderer.invoke(Channels.providersCheck, providerId, projectId),
+  },
+  settings: {
+    get: (providerId, projectId) => ipcRenderer.invoke(Channels.settingsGet, providerId, projectId),
+    set: (providerId, settings, projectId) => ipcRenderer.invoke(Channels.settingsSet, providerId, settings, projectId),
   },
   runs: {
     start: (taskId) => ipcRenderer.invoke(Channels.runsStart, taskId),

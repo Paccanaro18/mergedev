@@ -4,7 +4,7 @@ import { basename, join } from "node:path";
 import { promisify } from "node:util";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { ClaudeCodeProvider } from "@merge/providers";
-import type { AgentEvent, PermissionDecision } from "@merge/core";
+import type { AgentEvent, PermissionDecision, PermissionMode, ProviderSettings } from "@merge/core";
 import { Runner } from "@merge/runner";
 import { SqliteStore } from "@merge/store";
 import { WorktreeManager, type Workspace } from "@merge/workspace";
@@ -24,6 +24,22 @@ async function gitSucceeds(cwd: string, args: string[]): Promise<boolean> {
 
 /** An isolated run needs a git repository with at least one commit to branch from. */
 const canIsolate = (projectPath: string) => gitSucceeds(projectPath, ["rev-parse", "--verify", "HEAD"]);
+
+const PERMISSION_MODES: PermissionMode[] = ["default", "acceptEdits", "plan", "bypassPermissions"];
+
+/** Validates what came from the renderer and drops empty values, so only real choices are saved. */
+function cleanSettings(input: ProviderSettings): ProviderSettings {
+  const out: ProviderSettings = {};
+  if (input.permissionMode !== undefined) {
+    if (!PERMISSION_MODES.includes(input.permissionMode)) throw new Error("Modo de permissão inválido.");
+    out.permissionMode = input.permissionMode;
+  }
+  const tools = [...new Set((input.allowedTools ?? []).map((t) => String(t).trim()).filter(Boolean))];
+  if (tools.length > 0) out.allowedTools = tools;
+  const command = input.command?.trim();
+  if (command) out.command = command;
+  return out;
+}
 
 /** Runs whose worktree is being kept or discarded right now, so a double click does not run twice. */
 const finishing = new Set<string>();
@@ -182,10 +198,35 @@ function registerIpc(store: SqliteStore, runner: Runner, worktrees: WorktreeMana
       runner.listProviders().map(async (p) => ({
         id: p.id,
         displayName: p.displayName,
-        status: await p.check(),
+        status: await p.check(store.getProviderSettings(p.id)),
       })),
     ),
   );
+  const findProvider = (providerId: string) => {
+    const provider = runner.listProviders().find((p) => p.id === providerId);
+    if (!provider) throw new Error("Provider desconhecido.");
+    return provider;
+  };
+  const assertProject = (projectId?: string) => {
+    if (projectId !== undefined && !store.getProject(projectId)) throw new Error("Projeto não encontrado.");
+  };
+  ipcMain.handle(Channels.providersCheck, (_e, providerId: string, projectId?: string) => {
+    const provider = findProvider(providerId);
+    assertProject(projectId);
+    return provider.check(
+      projectId ? store.resolveProviderSettings(providerId, projectId) : store.getProviderSettings(providerId),
+    );
+  });
+  ipcMain.handle(Channels.settingsGet, (_e, providerId: string, projectId?: string) => {
+    findProvider(providerId);
+    assertProject(projectId);
+    return store.getProviderSettings(providerId, projectId);
+  });
+  ipcMain.handle(Channels.settingsSet, (_e, providerId: string, settings: ProviderSettings, projectId?: string) => {
+    findProvider(providerId);
+    assertProject(projectId);
+    store.setProviderSettings(providerId, cleanSettings(settings), projectId);
+  });
 }
 
 function createWindow(): BrowserWindow {
