@@ -1,0 +1,11 @@
+{
+  "name": "@merge/workspace",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "test": "tsc -b && node --test dist/"
+  }
+}

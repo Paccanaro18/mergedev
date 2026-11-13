@@ -64,3 +64,55 @@ test("rejects unknown provider and unavailable provider", async () => {
   await assert.rejects(runner.runTask(task.id, { providerId: "other" }), /Unknown provider/);
   await assert.rejects(runner.runTask(task.id, { providerId: "fake" }), /unavailable: nope/);
 });
+
+test("isolated run executes in the workspace folder and records workspace.created", async () => {
+  const cwds: string[] = [];
+  const provider: AgentProvider = {
+    id: "fake",
+    displayName: "Fake",
+    check: async () => ({ available: true }),
+    async *run({ cwd }) {
+      cwds.push(cwd);
+      yield { type: "run.finished", ok: true };
+    },
+  };
+  const store = new SqliteStore(":memory:");
+  const project = store.createProject({ name: "p", path: "/original" });
+  const task = store.createTask({ projectId: project.id, title: "t", prompt: "hi" });
+  const created: { repoPath: string; runId: string }[] = [];
+  const runner = new Runner(store, [provider], {
+    create: async (input) => {
+      created.push(input);
+      return { path: "/isolated", branch: "merge/run-x", baseCommit: "abc" };
+    },
+  });
+
+  const run = await runner.runTask(task.id, { providerId: "fake", isolate: true });
+  assert.deepEqual(cwds, ["/isolated"]);
+  assert.deepEqual(created, [{ repoPath: "/original", runId: run.id }]);
+  assert.deepEqual(store.listEvents(run.id)[0], {
+    type: "workspace.created",
+    path: "/isolated",
+    branch: "merge/run-x",
+    baseCommit: "abc",
+  });
+
+  // Without isolate the original folder is used, even when a workspace provider exists.
+  await runner.runTask(task.id, { providerId: "fake" });
+  assert.equal(cwds[1], "/original");
+  assert.equal(created.length, 1);
+});
+
+test("workspace creation failure fails the run; isolate without a provider is rejected", async () => {
+  const { store, task, runner: plain } = setup(fakeProvider([{ type: "run.finished", ok: true }]));
+  await assert.rejects(plain.runTask(task.id, { providerId: "fake", isolate: true }), /workspace provider/);
+
+  const runner = new Runner(store, [fakeProvider([{ type: "run.finished", ok: true }])], {
+    create: async () => {
+      throw new Error("not a git repo");
+    },
+  });
+  const run = await runner.runTask(task.id, { providerId: "fake", isolate: true });
+  assert.equal(run.status, "failed");
+  assert.deepEqual(store.listEvents(run.id), [{ type: "error", message: "not a git repo" }]);
+});
