@@ -2,12 +2,16 @@ import { writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { ClaudeCodeProvider } from "@merge/providers";
+import type { PermissionDecision } from "@merge/core";
 import { Runner } from "@merge/runner";
 import { SqliteStore } from "@merge/store";
 import { Channels, type RunSummary } from "../shared/api";
 
 /** Active runs by task id, so they can be cancelled. */
 const running = new Map<string, AbortController>();
+
+/** Permission requests waiting for the user, by request id. Resolving one resumes the paused run. */
+const pendingPermissions = new Map<string, (decision: PermissionDecision) => void>();
 
 function registerIpc(store: SqliteStore, runner: Runner): void {
   ipcMain.handle(Channels.projectsList, () => store.listProjects());
@@ -43,6 +47,19 @@ function registerIpc(store: SqliteStore, runner: Runner): void {
       return await runner.runTask(taskId, {
         providerId: "claude-code",
         signal: controller.signal,
+        // Pauses the run until the user answers through runs:respondPermission.
+        // On cancel the adapter stops waiting by itself (it watches the signal); we only drop the entry.
+        onPermissionRequest: ({ requestId }) =>
+          new Promise<PermissionDecision>((resolve) => {
+            if (controller.signal.aborted) return;
+            const forget = () => pendingPermissions.delete(requestId);
+            pendingPermissions.set(requestId, (decision) => {
+              controller.signal.removeEventListener("abort", forget);
+              forget();
+              resolve(decision);
+            });
+            controller.signal.addEventListener("abort", forget, { once: true });
+          }),
         onEvent: (e, run) => {
           if (!event.sender.isDestroyed()) {
             event.sender.send(Channels.runsEvent, { taskId, runId: run.id, event: e });
@@ -56,6 +73,14 @@ function registerIpc(store: SqliteStore, runner: Runner): void {
   ipcMain.handle(Channels.runsCancel, (_e, taskId: string) => {
     running.get(taskId)?.abort();
   });
+  ipcMain.handle(
+    Channels.runsRespondPermission,
+    (_e, requestId: string, decision: "allow" | "deny", reason?: string) => {
+      const answer = pendingPermissions.get(requestId);
+      if (!answer) throw new Error("Este pedido de permissão não está mais aguardando resposta.");
+      answer({ decision, reason });
+    },
+  );
   ipcMain.handle(Channels.runsList, (_e, taskId: string): RunSummary[] =>
     store.listRuns(taskId).map((run) => {
       const finished = store.listEvents(run.id).find((e) => e.type === "run.finished");
@@ -121,6 +146,7 @@ void app.whenReady().then(() => {
 
   app.on("window-all-closed", () => {
     for (const controller of running.values()) controller.abort();
+    pendingPermissions.clear();
     store.close();
     app.quit();
   });
