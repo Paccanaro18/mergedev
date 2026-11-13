@@ -178,3 +178,71 @@ test("onPermissionRequest reaches the provider with the run, and its events are 
   assert.deepEqual(store.listEvents(run.id).map((e) => e.type), ["permission.requested", "permission.resolved", "run.finished"]);
   assert.equal(store.listEvents(run.id)[1]?.type === "permission.resolved" && (store.listEvents(run.id)[1] as { decision: string }).decision, "deny");
 });
+
+/** Provider that records what it was asked and reports a session id. */
+function sessionProvider() {
+  const calls: { prompt: string; cwd: string; resumeSessionId?: string }[] = [];
+  const provider: AgentProvider = {
+    id: "fake",
+    displayName: "Fake",
+    check: async () => ({ available: true }),
+    async *run({ prompt, cwd, resumeSessionId }) {
+      calls.push({ prompt, cwd, resumeSessionId });
+      yield { type: "session.started", sessionId: "sess-1" };
+      yield { type: "run.finished", ok: true };
+    },
+  };
+  return { provider, calls };
+}
+
+test("follow-up resumes the previous session with a new prompt and records it", async () => {
+  const { provider, calls } = sessionProvider();
+  const { store, task, runner } = setup(provider);
+  const first = await runner.runTask(task.id, { providerId: "fake" });
+  const second = await runner.runTask(task.id, { providerId: "fake", resumeFromRunId: first.id, prompt: "now do more" });
+
+  assert.deepEqual(calls.map((c) => [c.prompt, c.resumeSessionId]), [
+    ["hi", undefined],
+    ["now do more", "sess-1"],
+  ]);
+  assert.deepEqual(store.listEvents(second.id)[0], { type: "message", role: "user", text: "now do more" });
+  assert.equal(store.listRuns(task.id).length, 2);
+});
+
+test("follow-up of an isolated run continues in the same worktree", async () => {
+  const { provider, calls } = sessionProvider();
+  const store = new SqliteStore(":memory:");
+  const project = store.createProject({ name: "p", path: process.cwd() });
+  const task = store.createTask({ projectId: project.id, title: "t", prompt: "hi" });
+  let created = 0;
+  const runner = new Runner(store, [provider], {
+    create: async () => {
+      created++;
+      return { path: process.cwd(), branch: "merge/run-x", baseCommit: "abc" }; // a folder that exists
+    },
+  });
+  const first = await runner.runTask(task.id, { providerId: "fake", isolate: true });
+  const second = await runner.runTask(task.id, { providerId: "fake", isolate: true, resumeFromRunId: first.id, prompt: "more" });
+
+  assert.equal(created, 1, "no second worktree");
+  assert.equal(calls[1]?.cwd, process.cwd());
+  assert.equal(store.listEvents(second.id).some((e) => e.type === "workspace.created"), true);
+});
+
+test("follow-up is rejected when it cannot be resumed", async () => {
+  const { provider } = sessionProvider();
+  const { store, task, runner } = setup(provider);
+  const first = await runner.runTask(task.id, { providerId: "fake" });
+  const opts = { providerId: "fake", resumeFromRunId: first.id };
+  await assert.rejects(runner.runTask(task.id, opts), /new instruction/);
+  await assert.rejects(runner.runTask(task.id, { ...opts, resumeFromRunId: "nope", prompt: "x" }), /Run not found/);
+
+  const noSession = store.createRun({ taskId: task.id, providerId: "fake" });
+  await assert.rejects(runner.runTask(task.id, { ...opts, resumeFromRunId: noSession.id, prompt: "x" }), /no session/);
+
+  const gone = store.createRun({ taskId: task.id, providerId: "fake" });
+  store.appendEvent(gone.id, { type: "session.started", sessionId: "s" });
+  store.appendEvent(gone.id, { type: "workspace.created", path: "/does/not/exist", branch: "b", baseCommit: "c" });
+  await assert.rejects(runner.runTask(task.id, { ...opts, resumeFromRunId: gone.id, prompt: "x" }), /no longer exists/);
+  assert.equal(store.listRuns(task.id).length, 3, "failed validations create no run");
+});

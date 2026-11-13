@@ -32,6 +32,8 @@ export interface RunInput {
   signal?: AbortSignal;
   /** Effective settings (project over provider). Overrides the provider's constructor options. */
   settings?: ProviderSettings;
+  /** Continue the conversation of this earlier session (its id comes from `session.started`). */
+  resumeSessionId?: string;
   /**
    * Makes the run interactive: actions outside the allowed list pause the run and
    * call this. Without it the provider keeps the non-interactive behavior.

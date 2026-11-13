@@ -23,3 +23,9 @@ test("interactive runs read stream-json from stdin and delegate permission promp
   assert.equal(args[args.indexOf("--permission-mode") + 1], "acceptEdits");
   assert.equal(buildClaudeArgs({}).includes("--permission-prompt-tool"), false);
 });
+
+test("resumes a previous session with --resume", () => {
+  const args = buildClaudeArgs({}, { resumeSessionId: "abc-123" });
+  assert.equal(args[args.indexOf("--resume") + 1], "abc-123");
+  assert.equal(buildClaudeArgs({}).includes("--resume"), false);
+});

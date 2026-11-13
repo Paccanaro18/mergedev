@@ -24,8 +24,12 @@ const definedOnly = (s: ProviderSettings = {}): ProviderSettings =>
   Object.fromEntries(Object.entries(s).filter(([, v]) => v !== undefined));
 
 /** CLI arguments for a run. Pure so it can be tested without spawning `claude`. */
-export function buildClaudeArgs(options: ClaudeCodeOptions, { interactive = false } = {}): string[] {
+export function buildClaudeArgs(
+  options: ClaudeCodeOptions,
+  { interactive = false, resumeSessionId }: { interactive?: boolean; resumeSessionId?: string } = {},
+): string[] {
   const args = ["-p"];
+  if (resumeSessionId) args.push("--resume", resumeSessionId);
   // Interactive runs read stream-json from stdin and ask the host (us) about permissions.
   if (interactive) args.push("--input-format", "stream-json", "--permission-prompt-tool", "stdio");
   args.push(
@@ -87,9 +91,9 @@ export class ClaudeCodeProvider implements AgentProvider {
     });
   }
 
-  async *run({ prompt, cwd, signal, settings, onPermissionRequest }: RunInput): AsyncIterable<AgentEvent> {
+  async *run({ prompt, cwd, signal, settings, resumeSessionId, onPermissionRequest }: RunInput): AsyncIterable<AgentEvent> {
     const interactive = onPermissionRequest !== undefined;
-    const args = buildClaudeArgs({ ...this.options, ...definedOnly(settings) }, { interactive });
+    const args = buildClaudeArgs({ ...this.options, ...definedOnly(settings) }, { interactive, resumeSessionId });
     const command = settings?.command ?? this.command;
 
     const child = spawn(command, args, { cwd, signal, stdio: ["pipe", "pipe", "pipe"] });
