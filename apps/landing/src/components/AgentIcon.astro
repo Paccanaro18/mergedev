@@ -1,0 +1,50 @@
+---
+import type { AgentIcon } from "../config";
+
+interface Props {
+  icon: AgentIcon;
+}
+const { icon } = Astro.props;
+---
+
+<svg
+  width="36"
+  height="36"
+  viewBox="0 0 36 36"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="3"
+  stroke-linecap="round"
+  stroke-linejoin="round"
+  aria-hidden="true"
+  focusable="false"
+>
+  {icon === "spark" && <path d="M18 3v30M3 18h30M7.4 7.4l21.2 21.2M28.6 7.4L7.4 28.6M11 4.6l14 26.8M25 4.6L11 31.4" />}
+  {
+    icon === "terminal" && (
+      <>
+        <rect x="2" y="5" width="32" height="26" rx="8" />
+        <path d="M10 13l6 5-6 5M19 24h8" />
+      </>
+    )
+  }
+  {icon === "gemini" && <path d="M18 3c1.5 9 5.5 13.5 15 15-9.5 1.5-13.5 6-15 15-1.5-9-5.5-13.5-15-15 9.5-1.5 13.5-6 15-15z" />}
+  {
+    icon === "cube" && (
+      <>
+        <path d="M18 3l13 7.5v15L18 33 5 25.5v-15z" />
+        <path d="M5 10.5l13 7.5 13-7.5M18 18v15" />
+      </>
+    )
+  }
+  {
+    icon === "bot" && (
+      <>
+        <rect x="4" y="8" width="28" height="22" rx="9" />
+        <path d="M13 17v3M23 17v3" />
+      </>
+    )
+  }
+  {icon === "letter-a" && <path d="M6 31L18 5l12 26M11 22h14" />}
+  {icon === "brackets" && <path d="M13 9L4 18l9 9M23 9l9 9-9 9" />}
+</svg>

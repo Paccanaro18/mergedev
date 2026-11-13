@@ -2,49 +2,79 @@
 import DownloadActions from "./DownloadActions.astro";
 ---
 
-<section class="hero" aria-labelledby="hero-title">
+<section class="hero" aria-labelledby="hero-title" data-hero>
+  <!--
+    Fundo decorativo: faixas (agentes) que convergem para um único ponto, logo
+    acima da janela do app. Pulsos viajam por elas. Só CSS.
+  -->
+  <div class="lanes" aria-hidden="true">
+    <svg class="lanes__svg" viewBox="0 0 1440 1000" preserveAspectRatio="none" focusable="false">
+      <g class="lanes__base">
+        <path d="M-40 90 C 360 90, 560 560, 720 840" />
+        <path d="M-40 360 C 300 360, 560 640, 720 840" />
+        <path d="M-40 700 C 320 700, 600 760, 720 840" />
+        <path d="M1480 90 C 1080 90, 880 560, 720 840" />
+        <path d="M1480 360 C 1140 360, 880 640, 720 840" />
+        <path d="M1480 700 C 1120 700, 840 760, 720 840" />
+      </g>
+      <g class="lanes__pulse">
+        <path class="p1" pathLength="1000" d="M-40 90 C 360 90, 560 560, 720 840" />
+        <path class="p2" pathLength="1000" d="M-40 360 C 300 360, 560 640, 720 840" />
+        <path class="p3" pathLength="1000" d="M-40 700 C 320 700, 600 760, 720 840" />
+        <path class="p4" pathLength="1000" d="M1480 90 C 1080 90, 880 560, 720 840" />
+        <path class="p5" pathLength="1000" d="M1480 360 C 1140 360, 880 640, 720 840" />
+        <path class="p6" pathLength="1000" d="M1480 700 C 1120 700, 840 760, 720 840" />
+      </g>
+    </svg>
+    <span class="lanes__node"></span>
+  </div>
+
   <div class="container hero__inner">
     <h1 class="hero__title" id="hero-title">
-      <span>Vários agentes</span>
-      <span>de código.</span>
-      <span class="accent">Um só lugar.</span>
+      <span class="rise rise--1">Vários agentes</span>
+      <span class="rise rise--2">de código.</span>
+      <span class="rise rise--3 accent"><span class="shimmer">Um só lugar.</span></span>
     </h1>
-    <p class="hero__lead">
+    <p class="hero__lead rise rise--4">
       O Merge orquestra Claude Code, Codex e outros agentes dentro dos seus projetos e
       tarefas, direto no seu computador.
     </p>
 
-    <DownloadActions />
+    <div class="rise rise--5">
+      <DownloadActions />
+    </div>
 
-    <div
-      class="window"
-      role="img"
-      aria-label="Exemplo da janela do Merge, projeto meu-projeto: a tarefa “Corrigir erro no login” executando com o Claude Code, “Escrever testes da API” executando com o Codex e “Revisar mudanças” concluída com o Claude Code."
-    >
-      <div class="window__bar">
-        <span class="window__dot"></span>
-        <span class="window__dot"></span>
-        <span class="window__dot"></span>
-        <span class="window__title">Merge · meu-projeto</span>
-      </div>
-      <div class="window__body">
-        <div class="window__row">
-          <span class="status-dot"></span>
-          <span class="window__name">Corrigir erro no login</span>
-          <span class="window__tool window__tool--on">Claude Code</span>
-          <span class="window__state">executando</span>
+    <div class="window-wrap rise rise--6">
+      <div
+        class="window"
+        role="img"
+        aria-label="Exemplo da janela do Merge, projeto meu-projeto: a tarefa “Corrigir erro no login” executando com o Claude Code, “Escrever testes da API” executando com o Codex e “Revisar mudanças” concluída com o Claude Code."
+      >
+        <div class="window__bar">
+          <span class="window__dot"></span>
+          <span class="window__dot"></span>
+          <span class="window__dot"></span>
+          <span class="window__title">Merge · meu-projeto</span>
         </div>
-        <div class="window__row">
-          <span class="status-dot"></span>
-          <span class="window__name">Escrever testes da API</span>
-          <span class="window__tool window__tool--on">Codex</span>
-          <span class="window__state">executando</span>
-        </div>
-        <div class="window__row">
-          <span class="status-dot status-dot--idle"></span>
-          <span class="window__name">Revisar mudanças</span>
-          <span class="window__tool">Claude Code</span>
-          <span class="window__state">concluído</span>
+        <div class="window__body">
+          <div class="window__row window__row--run run-a">
+            <span class="status-dot"></span>
+            <span class="window__name">Corrigir erro no login</span>
+            <span class="window__tool window__tool--on">Claude Code</span>
+            <span class="window__state">executando<span class="caret"></span></span>
+          </div>
+          <div class="window__row window__row--run run-b">
+            <span class="status-dot"></span>
+            <span class="window__name">Escrever testes da API</span>
+            <span class="window__tool window__tool--on">Codex</span>
+            <span class="window__state">executando<span class="caret"></span></span>
+          </div>
+          <div class="window__row">
+            <span class="status-dot status-dot--idle"></span>
+            <span class="window__name">Revisar mudanças</span>
+            <span class="window__tool">Claude Code</span>
+            <span class="window__state">concluído</span>
+          </div>
         </div>
       </div>
     </div>

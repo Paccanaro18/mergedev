@@ -23,7 +23,7 @@ const items = [
 
 <section class="section" id="faq" aria-labelledby="faq-titulo">
   <div class="container faq">
-    <div class="faq__intro">
+    <div class="faq__intro" data-reveal>
       <h2 class="h2" id="faq-titulo">Perguntas frequentes</h2>
       <p>
         Não achou o que procurava? Abra uma issue no{" "}
@@ -31,10 +31,10 @@ const items = [
       </p>
     </div>
 
-    <div class="faq__list">
+    <div class="faq__list" data-stagger>
       {
         items.map((item, index) => (
-          <details class="faq__item" open={index === 0}>
+          <details class="faq__item" data-reveal open={index === 0}>
             <summary class="faq__q">
               <span>{item.q}</span>
               <span class="faq__icon" aria-hidden="true">

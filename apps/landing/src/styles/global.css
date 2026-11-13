@@ -10,7 +10,7 @@
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
-  scroll-padding-top: 24px;
+  scroll-padding-top: 96px;
 }
 
 body {
@@ -23,6 +23,8 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-wrap: break-word;
+  position: relative;
+  isolation: isolate;
 }
 
 h1,
@@ -61,7 +63,7 @@ svg {
   position: absolute;
   left: 16px;
   top: -80px;
-  z-index: 10;
+  z-index: 30;
   padding: 12px 20px;
   border-radius: var(--radius-sm);
   background: var(--accent);
@@ -188,9 +190,8 @@ svg {
   line-height: 18px;
   text-decoration: none;
 }
-.nav a:hover {
-  text-decoration: underline;
-  text-underline-offset: 6px;
+.nav a:not(.pill):hover {
+  color: var(--accent-ink);
 }
 .nav .pill,
 .pill {
@@ -287,8 +288,6 @@ svg {
 /* ---------- Janela do app (hero) ---------- */
 .window {
   width: 100%;
-  max-width: 900px;
-  margin-top: 32px;
   overflow: hidden;
   text-align: left;
   background: var(--panel);
@@ -361,7 +360,7 @@ svg {
   color: #d97757;
 }
 .window__state {
-  width: 96px;
+  min-width: 108px;
   color: rgb(var(--panel-fg-rgb) / 0.75);
 }
 
@@ -390,11 +389,6 @@ svg {
   font-size: 16px;
   line-height: 20px;
   color: var(--fg-80);
-}
-.agents__track {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
 }
 .agent {
   display: flex;
