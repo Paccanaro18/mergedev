@@ -5,7 +5,10 @@ import { ClaudeCodeProvider } from "@merge/providers";
 import type { PermissionDecision } from "@merge/core";
 import { Runner } from "@merge/runner";
 import { SqliteStore } from "@merge/store";
-import { Channels, type RunSummary } from "../shared/api";
+import { WorktreeManager } from "@merge/workspace";
+import { Channels, type RunSummary, type StartRunOptions } from "../shared/api";
+import { registerSettingsIpc } from "./settings-ipc";
+import { registerWorkspaceIpc } from "./workspace-ipc";
 
 /** Active runs by task id, so they can be cancelled. */
 const running = new Map<string, AbortController>();
@@ -13,7 +16,10 @@ const running = new Map<string, AbortController>();
 /** Permission requests waiting for the user, by request id. Resolving one resumes the paused run. */
 const pendingPermissions = new Map<string, (decision: PermissionDecision) => void>();
 
-function registerIpc(store: SqliteStore, runner: Runner): void {
+function registerIpc(store: SqliteStore, runner: Runner, worktrees: WorktreeManager): void {
+  registerWorkspaceIpc(store, worktrees, running);
+  registerSettingsIpc(store, () => runner.listProviders().map((p) => p.id));
+
   ipcMain.handle(Channels.projectsList, () => store.listProjects());
   ipcMain.handle(Channels.projectsAdd, async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -39,13 +45,16 @@ function registerIpc(store: SqliteStore, runner: Runner): void {
       return store.createTask({ projectId: input.projectId, title, prompt });
     },
   );
-  ipcMain.handle(Channels.runsStart, async (event, taskId: string) => {
+  ipcMain.handle(Channels.runsStart, async (event, taskId: string, options: StartRunOptions = {}) => {
     if (running.has(taskId)) throw new Error("Esta tarefa já está em execução.");
     const controller = new AbortController();
     running.set(taskId, controller);
     try {
       return await runner.runTask(taskId, {
         providerId: "claude-code",
+        isolate: options.isolate === true,
+        resumeFromRunId: options.resumeFromRunId,
+        prompt: options.prompt,
         signal: controller.signal,
         // Pauses the run until the user answers through runs:respondPermission.
         // On cancel the adapter stops waiting by itself (it watches the signal); we only drop the entry.
@@ -94,7 +103,7 @@ function registerIpc(store: SqliteStore, runner: Runner): void {
       runner.listProviders().map(async (p) => ({
         id: p.id,
         displayName: p.displayName,
-        status: await p.check(),
+        status: await p.check(store.getProviderSettings(p.id)),
       })),
     ),
   );
@@ -128,8 +137,9 @@ function createWindow(): BrowserWindow {
 void app.whenReady().then(() => {
   const dbPath = process.env.MERGE_DB_PATH ?? join(app.getPath("userData"), "merge.db");
   const store = new SqliteStore(dbPath);
-  const runner = new Runner(store, [new ClaudeCodeProvider()]);
-  registerIpc(store, runner);
+  const worktrees = new WorktreeManager(join(app.getPath("userData"), "worktrees"));
+  const runner = new Runner(store, [new ClaudeCodeProvider()], worktrees);
+  registerIpc(store, runner, worktrees);
 
   const win = createWindow();
 
