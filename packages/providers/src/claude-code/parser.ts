@@ -66,6 +66,21 @@ export function parseClaudeLine(line: string): AgentEvent[] {
       }
       return events;
     }
+    case "control_request": {
+      // Only emitted when the run is interactive (--permission-prompt-tool stdio).
+      const req = isObj(raw.request) ? raw.request : undefined;
+      if (req?.subtype !== "can_use_tool" || typeof raw.request_id !== "string") return [];
+      return [
+        {
+          type: "permission.requested",
+          requestId: raw.request_id,
+          callId: typeof req.tool_use_id === "string" ? req.tool_use_id : undefined,
+          tool: String(req.tool_name),
+          input: req.input,
+          description: typeof req.description === "string" ? req.description : undefined,
+        },
+      ];
+    }
     case "result": {
       const ok = raw.is_error !== true && raw.subtype === "success";
       return [

@@ -16,3 +16,10 @@ test("uses the configured permission mode and allowed tools", () => {
   assert.equal(args[args.indexOf("--permission-mode") + 1], "plan");
   assert.deepEqual(args.slice(args.indexOf("--allowedTools")), ["--allowedTools", "Bash(npm test)", "Read"]);
 });
+
+test("interactive runs read stream-json from stdin and delegate permission prompts", () => {
+  const args = buildClaudeArgs({}, { interactive: true });
+  assert.deepEqual(args.slice(0, 5), ["-p", "--input-format", "stream-json", "--permission-prompt-tool", "stdio"]);
+  assert.equal(args[args.indexOf("--permission-mode") + 1], "acceptEdits");
+  assert.equal(buildClaudeArgs({}).includes("--permission-prompt-tool"), false);
+});

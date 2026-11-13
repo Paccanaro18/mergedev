@@ -148,3 +148,33 @@ test("saved settings (project over provider) are passed to the provider and chec
   ]);
   assert.deepEqual(checked, seen);
 });
+
+test("onPermissionRequest reaches the provider with the run, and its events are persisted", async () => {
+  const provider: AgentProvider = {
+    id: "fake",
+    displayName: "Fake",
+    check: async () => ({ available: true }),
+    async *run({ onPermissionRequest }) {
+      yield { type: "permission.requested", requestId: "r1", tool: "Bash", input: { command: "npm i" } };
+      const d = await onPermissionRequest!({ requestId: "r1", tool: "Bash", input: { command: "npm i" } });
+      yield { type: "permission.resolved", requestId: "r1", decision: d.decision };
+      yield { type: "run.finished", ok: true };
+    },
+  };
+  const store = new SqliteStore(":memory:");
+  const project = store.createProject({ name: "p", path: process.cwd() });
+  const task = store.createTask({ projectId: project.id, title: "t", prompt: "hi" });
+  const runner = new Runner(store, [provider]);
+
+  const asked: string[] = [];
+  const run = await runner.runTask(task.id, {
+    providerId: "fake",
+    onPermissionRequest: async (req, r) => {
+      asked.push(`${req.tool}:${r.id}`);
+      return { decision: "deny" };
+    },
+  });
+  assert.deepEqual(asked, [`Bash:${run.id}`]);
+  assert.deepEqual(store.listEvents(run.id).map((e) => e.type), ["permission.requested", "permission.resolved", "run.finished"]);
+  assert.equal(store.listEvents(run.id)[1]?.type === "permission.resolved" && (store.listEvents(run.id)[1] as { decision: string }).decision, "deny");
+});
