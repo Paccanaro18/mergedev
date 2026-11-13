@@ -3,20 +3,21 @@ import { REPO_URL } from "../config";
 import Logo from "./Logo.astro";
 ---
 
-<header>
+<header class="header" data-header>
   <div class="container header__inner">
     <a class="logo" href="#top" aria-label="Merge, início da página">
       <Logo />
       <span>Merge</span>
     </a>
     <nav class="nav" aria-label="Principal">
-      <a href="#como-funciona">Como funciona</a>
-      <a href="#recursos">Recursos</a>
-      <a href="#privacidade">Privacidade</a>
-      <a href="#faq">FAQ</a>
+      <a href="#como-funciona" data-spy="como-funciona">Como funciona</a>
+      <a href="#recursos" data-spy="recursos">Recursos</a>
+      <a href="#privacidade" data-spy="privacidade">Privacidade</a>
+      <a href="#faq" data-spy="faq">FAQ</a>
       <a class="pill" href={REPO_URL} target="_blank" rel="noopener noreferrer">
         GitHub<span class="sr-only"> (abre em nova aba)</span>
       </a>
     </nav>
   </div>
+  <div class="header__progress" aria-hidden="true"></div>
 </header>

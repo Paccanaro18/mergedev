@@ -46,6 +46,7 @@
   --bg: #141413;
   --fg-rgb: 250 249 245;
   --accent: #d97757; /* preenchimentos (botões, faixa) */
+  --accent-rgb: 217 119 87; /* mesmo acento, para alfa (brilhos, fundo) */
   --accent-ink: #d97757; /* acento como texto/ícone/borda sobre o fundo da página */
   --on-accent: #141413; /* texto sobre preenchimento de acento */
   --focus: #faf9f5;
