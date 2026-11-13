@@ -149,3 +149,23 @@ li button:disabled { opacity: 0.5; cursor: default; }
 .changes-actions button:disabled { opacity: 0.5; cursor: default; }
 .changes-actions .danger { color: var(--bad); border-color: var(--bad); }
 .changes-actions .primary { margin-top: 0; }
+
+.sidebar > button:last-child { margin-top: 12px; padding: 4px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.settings { max-width: 640px; }
+.settings-scope { display: flex; gap: 16px; margin-bottom: 8px; }
+.settings label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
+.settings select, .settings input:not([type="radio"]), .settings textarea {
+  font: inherit; color: var(--text); padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+}
+.settings textarea { font-family: ui-monospace, Consolas, monospace; font-size: 12px; width: 100%; }
+.settings input:not([type="radio"]) { width: 100%; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.settings-block { margin: 20px 0; }
+.settings-block h3 { margin: 0 0 6px; font-size: 13px; }
+.settings-block p { margin: 4px 0; font-size: 13px; }
+.settings-block button, .settings-actions button { padding: 3px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.settings-actions button:disabled { opacity: 0.5; cursor: default; }
+.mode-list { display: flex; flex-direction: column; gap: 6px; }
+.settings .mode { flex-direction: row; align-items: flex-start; gap: 8px; color: var(--text); font-size: 13px; }
+.mode-help { display: block; font-size: 12px; }
+.settings-actions { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+.settings-actions .primary { margin-top: 0; }

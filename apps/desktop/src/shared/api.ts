@@ -1,4 +1,4 @@
-import type { AgentEvent, Project, ProviderStatus, Run, Task } from "@merge/core";
+import type { AgentEvent, Project, ProviderSettings, ProviderStatus, Run, Task } from "@merge/core";
 
 /** Contract between the renderer and the main process. Add new calls here first. */
 export interface MergeApi {
@@ -12,7 +12,20 @@ export interface MergeApi {
     create(input: { projectId: string; title: string; prompt: string }): Promise<Task>;
   };
   providers: {
+    /** Every provider with its status, checked with its global settings (e.g. the binary path). */
     list(): Promise<Array<{ id: string; displayName: string; status: ProviderStatus }>>;
+    /**
+     * Checks one provider with the settings that would apply to a run: the project's over the
+     * global ones when `projectId` is given, otherwise the global ones. It only confirms that the
+     * command runs (`--version`); it does not tell whether the user is logged in.
+     */
+    check(providerId: string, projectId?: string): Promise<ProviderStatus>;
+  };
+  settings: {
+    /** The settings saved for exactly one scope: a project when `projectId` is given, otherwise global. */
+    get(providerId: string, projectId?: string): Promise<ProviderSettings>;
+    /** Replaces the settings of one scope. `{}` clears it. Applies from the next run. */
+    set(providerId: string, settings: ProviderSettings, projectId?: string): Promise<void>;
   };
   runs: {
     /**
@@ -82,6 +95,9 @@ export const Channels = {
   tasksList: "tasks:list",
   tasksCreate: "tasks:create",
   providersList: "providers:list",
+  providersCheck: "providers:check",
+  settingsGet: "settings:get",
+  settingsSet: "settings:set",
   runsStart: "runs:start",
   runsCancel: "runs:cancel",
   runsRespondPermission: "runs:respondPermission",

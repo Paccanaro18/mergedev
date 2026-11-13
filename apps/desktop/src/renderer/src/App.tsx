@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { MergeApi } from "../../shared/api";
 import { Changes } from "./Changes";
 import { History } from "./History";
+import { Settings } from "./Settings";
 import { hasPendingPermission, RunView } from "./RunView";
 
 type ProviderInfo = Awaited<ReturnType<MergeApi["providers"]["list"]>>[number];
@@ -27,9 +28,11 @@ export function App() {
   const [notices, setNotices] = useState<Record<string, string>>({});
   const [active, setActive] = useState<Set<string>>(new Set());
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [view, setView] = useState<"tasks" | "settings">("tasks");
   const [openMode, setOpenMode] = useState<"live" | "history">("live");
 
   const fail = (err: unknown) => setError(errorMessage(err));
+  const reloadProviders = () => void window.merge.providers.list().then(setProviders).catch(fail);
 
   useEffect(() => {
     void window.merge.projects
@@ -125,7 +128,10 @@ export function App() {
               <li key={p.id}>
                 <button
                   className={`project${p.id === selectedId ? " selected" : ""}`}
-                  onClick={() => setSelectedId(p.id)}
+                  onClick={() => {
+                    setSelectedId(p.id);
+                    setView("tasks");
+                  }}
                 >
                   <strong>{p.name}</strong>
                   <span className="muted path">{p.path}</span>
@@ -143,11 +149,12 @@ export function App() {
             <li key={p.id}>
               <strong>{p.displayName}</strong>{" "}
               <span className={p.status.available ? "ok" : "bad"}>
-                {p.status.available ? "disponível" : `indisponível: ${p.status.reason ?? "?"}`}
+                {p.status.available ? "instalado" : `indisponível: ${p.status.reason ?? "?"}`}
               </span>
             </li>
           ))}
         </ul>
+        <button onClick={() => setView("settings")}>Configurações</button>
       </aside>
       <main className="content">
         {error && (
@@ -156,7 +163,9 @@ export function App() {
             <button onClick={() => setError(null)}>fechar</button>
           </div>
         )}
-        {selected ? (
+        {view === "settings" ? (
+          <Settings projects={projects ?? []} providers={providers} onSaved={reloadProviders} onError={fail} />
+        ) : selected ? (
           <TaskPanel
             project={selected}
             tasks={tasks}
