@@ -25,6 +25,9 @@ async function gitSucceeds(cwd: string, args: string[]): Promise<boolean> {
 /** An isolated run needs a git repository with at least one commit to branch from. */
 const canIsolate = (projectPath: string) => gitSucceeds(projectPath, ["rev-parse", "--verify", "HEAD"]);
 
+/** A new instruction continuing the conversation of an earlier run. */
+type FollowUp = { resumeFromRunId: string; prompt: string };
+
 const PERMISSION_MODES: PermissionMode[] = ["default", "acceptEdits", "plan", "bypassPermissions"];
 
 /** Validates what came from the renderer and drops empty values, so only real choices are saved. */
@@ -99,15 +102,18 @@ function registerIpc(store: SqliteStore, runner: Runner, worktrees: WorktreeMana
       return store.createTask({ projectId: input.projectId, title, prompt });
     },
   );
-  ipcMain.handle(Channels.runsStart, async (event, taskId: string) => {
+  ipcMain.handle(Channels.runsStart, async (event, taskId: string, followUp?: FollowUp) => {
     if (running.has(taskId)) throw new Error("Esta tarefa já está em execução.");
+    if (followUp && !followUp.prompt?.trim()) throw new Error("Escreva a nova instrução.");
     const controller = new AbortController();
     running.set(taskId, controller);
     try {
       const task = store.getTask(taskId);
       const project = task && store.getProject(task.projectId);
-      const isolate = project ? await canIsolate(project.path) : false;
-      if (!isolate && !event.sender.isDestroyed()) {
+      // A follow-up continues where the earlier run was: the runner reuses that run's worktree, or
+      // the project folder when it was not isolated (a session only resumes from the same folder).
+      const isolate = !followUp && project ? await canIsolate(project.path) : false;
+      if (!followUp && !isolate && !event.sender.isDestroyed()) {
         event.sender.send(Channels.runsNotice, {
           taskId,
           message:
@@ -117,6 +123,7 @@ function registerIpc(store: SqliteStore, runner: Runner, worktrees: WorktreeMana
       return await runner.runTask(taskId, {
         providerId: "claude-code",
         isolate,
+        ...(followUp ? { resumeFromRunId: followUp.resumeFromRunId, prompt: followUp.prompt.trim() } : {}),
         signal: controller.signal,
         // Pauses the run until the user answers through runs:respondPermission.
         // On cancel the adapter stops waiting by itself (it watches the signal); we only drop the entry.

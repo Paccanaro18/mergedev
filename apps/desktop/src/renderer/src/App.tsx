@@ -1,8 +1,8 @@
 import type { AgentEvent, Project, Task } from "@merge/core";
 import { useEffect, useState, type FormEvent } from "react";
 import type { MergeApi } from "../../shared/api";
-import { Changes } from "./Changes";
 import { History } from "./History";
+import { RunFooter } from "./RunFooter";
 import { Settings } from "./Settings";
 import { hasPendingPermission, RunView } from "./RunView";
 
@@ -69,7 +69,7 @@ export function App() {
     };
   }, [selectedId]);
 
-  async function runTask(taskId: string) {
+  async function runTask(taskId: string, followUp?: { resumeFromRunId: string; prompt: string }) {
     setError(null);
     setLive((cur) => ({ ...cur, [taskId]: [] }));
     setLiveRunIds((cur) => {
@@ -85,7 +85,7 @@ export function App() {
     setActive((cur) => new Set(cur).add(taskId));
     setTasks((cur) => cur?.map((t) => (t.id === taskId ? { ...t, status: "running" } : t)) ?? cur);
     try {
-      await window.merge.runs.start(taskId);
+      await window.merge.runs.start(taskId, followUp);
     } catch (err) {
       fail(err);
     } finally {
@@ -181,6 +181,7 @@ export function App() {
               setOpenMode(mode);
             }}
             onRun={(id) => void runTask(id)}
+            onFollowUp={(id, runId, prompt) => void runTask(id, { resumeFromRunId: runId, prompt })}
             onCancel={(id) => void window.merge.runs.cancel(id)}
             onCreated={(task) => setTasks((cur) => [...(cur ?? []), task])}
             onError={fail}
@@ -209,11 +210,12 @@ function TaskPanel(props: {
   openMode: "live" | "history";
   onOpen: (taskId: string, mode: "live" | "history") => void;
   onRun: (taskId: string) => void;
+  onFollowUp: (taskId: string, runId: string, prompt: string) => void;
   onCancel: (taskId: string) => void;
   onCreated: (task: Task) => void;
   onError: (err: unknown) => void;
 }) {
-  const { project, tasks, canRun, active, openTaskId, openMode, events, liveRunId, notice, onOpen, onRun, onCancel, onCreated, onError } = props;
+  const { project, tasks, canRun, active, openTaskId, openMode, events, liveRunId, notice, onOpen, onRun, onFollowUp, onCancel, onCreated, onError } = props;
   const [title, setTitle] = useState("");
   const [prompt, setPrompt] = useState("");
   const [saving, setSaving] = useState(false);
@@ -276,10 +278,22 @@ function TaskPanel(props: {
               )}
               {openTaskId === t.id && openMode === "live" && notice && <p className="warn">{notice}</p>}
               {openTaskId === t.id && openMode === "live" && liveRunId && (
-                <Changes taskId={t.id} runId={liveRunId} reloadKey={active.has(t.id)} />
+                <RunFooter
+                  taskId={t.id}
+                  runId={liveRunId}
+                  events={events}
+                  running={active.has(t.id)}
+                  reloadKey={active.has(t.id)}
+                  onFollowUp={(runId, prompt) => onFollowUp(t.id, runId, prompt)}
+                />
               )}
               {openTaskId === t.id && openMode === "history" && (
-                <History taskId={t.id} reloadKey={active.has(t.id)} />
+                <History
+                  taskId={t.id}
+                  reloadKey={active.has(t.id)}
+                  running={active.has(t.id)}
+                  onFollowUp={(runId, prompt) => onFollowUp(t.id, runId, prompt)}
+                />
               )}
             </li>
           ))}

@@ -32,8 +32,12 @@ export interface MergeApi {
      * Runs the task with Claude Code, in an isolated git worktree when the project folder is a
      * git repository with at least one commit (otherwise in the folder itself, with a notice).
      * Resolves when the run ends; rejects if the provider is unavailable.
+     *
+     * With `followUp` it instead continues the conversation of an earlier run of the task with a
+     * new instruction. The agent keeps that run's context, and an isolated run continues in its own
+     * worktree, so it is refused once that worktree was kept or discarded.
      */
-    start(taskId: string): Promise<Run>;
+    start(taskId: string, followUp?: { resumeFromRunId: string; prompt: string }): Promise<Run>;
     /** Stops the task's running process, if any. */
     cancel(taskId: string): Promise<void>;
     /** Past runs of a task, oldest first, with the cost recorded in their events. */

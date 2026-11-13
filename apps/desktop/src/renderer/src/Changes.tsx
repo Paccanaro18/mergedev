@@ -48,8 +48,14 @@ function Patch({ patch }: { patch: string }) {
  * What an isolated run changed, with the buttons to keep or discard the branch.
  * After keeping or discarding the worktree folder is gone, so only the final result is shown.
  */
-export function Changes(props: { taskId: string; runId: string; reloadKey?: unknown }) {
-  const { taskId, runId, reloadKey } = props;
+export function Changes(props: {
+  taskId: string;
+  runId: string;
+  reloadKey?: unknown;
+  /** Called after the branch was kept or discarded. */
+  onFinished?: () => void;
+}) {
+  const { taskId, runId, reloadKey, onFinished } = props;
   const [changes, setChanges] = useState<RunChanges | null>(null);
   const [busy, setBusy] = useState(false);
   const [confirmingDiscard, setConfirmingDiscard] = useState(false);
@@ -82,6 +88,7 @@ export function Changes(props: { taskId: string; runId: string; reloadKey?: unkn
         await window.merge.runs.discardChanges(taskId, runId);
       }
       setChanges(await window.merge.runs.changes(taskId, runId));
+      onFinished?.();
     } catch (err) {
       setError(errorMessage(err));
     } finally {

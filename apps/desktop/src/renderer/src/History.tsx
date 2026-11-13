@@ -1,7 +1,7 @@
 import type { AgentEvent } from "@merge/core";
 import { useEffect, useState } from "react";
 import type { RunSummary } from "../../shared/api";
-import { Changes } from "./Changes";
+import { RunFooter } from "./RunFooter";
 import { RunView } from "./RunView";
 
 const STATUS_LABEL: Record<RunSummary["status"], string> = {
@@ -18,7 +18,14 @@ function duration(run: RunSummary): string {
 }
 
 /** Past runs of a task. Click one to reread the events that were recorded. */
-export function History({ taskId, reloadKey }: { taskId: string; reloadKey: unknown }) {
+export function History(props: {
+  taskId: string;
+  reloadKey: unknown;
+  /** True while the task is running; follow-ups are not offered then. */
+  running: boolean;
+  onFollowUp: (runId: string, prompt: string) => void;
+}) {
+  const { taskId, reloadKey, running, onFollowUp } = props;
   const [runs, setRuns] = useState<RunSummary[] | null>(null);
   const [openRunId, setOpenRunId] = useState<string | null>(null);
   const [events, setEvents] = useState<AgentEvent[]>([]);
@@ -59,7 +66,14 @@ export function History({ taskId, reloadKey }: { taskId: string; reloadKey: unkn
           {run.id === openRunId && (
             <>
               <RunView events={events} running={false} />
-              <Changes taskId={taskId} runId={run.id} reloadKey={reloadKey} />
+              <RunFooter
+                taskId={taskId}
+                runId={run.id}
+                events={events}
+                running={running}
+                reloadKey={reloadKey}
+                onFollowUp={onFollowUp}
+              />
             </>
           )}
         </div>
