@@ -19,9 +19,17 @@ export interface MergeApi {
     start(taskId: string): Promise<Run>;
     /** Stops the task's running process, if any. */
     cancel(taskId: string): Promise<void>;
+    /** Past runs of a task, oldest first, with the cost recorded in their events. */
+    list(taskId: string): Promise<RunSummary[]>;
+    /** The events recorded for a run, in order. */
+    events(runId: string): Promise<AgentEvent[]>;
     /** Subscribes to live events of every run. Returns the unsubscribe function. */
     onEvent(listener: (message: RunEventMessage) => void): () => void;
   };
+}
+
+export interface RunSummary extends Run {
+  costUsd?: number;
 }
 
 export interface RunEventMessage {
@@ -39,6 +47,8 @@ export const Channels = {
   providersList: "providers:list",
   runsStart: "runs:start",
   runsCancel: "runs:cancel",
+  runsList: "runs:list",
+  runsEvents: "runs:events",
   /** Main → renderer push, not a request/response call. */
   runsEvent: "runs:event",
 } as const;
