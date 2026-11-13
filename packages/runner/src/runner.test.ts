@@ -116,3 +116,35 @@ test("workspace creation failure fails the run; isolate without a provider is re
   assert.equal(run.status, "failed");
   assert.deepEqual(store.listEvents(run.id), [{ type: "error", message: "not a git repo" }]);
 });
+
+test("saved settings (project over provider) are passed to the provider and checked", async () => {
+  const seen: unknown[] = [];
+  const checked: unknown[] = [];
+  const provider: AgentProvider = {
+    id: "fake",
+    displayName: "Fake",
+    check: async (s) => {
+      checked.push(s);
+      return { available: true };
+    },
+    async *run({ settings }) {
+      seen.push(settings);
+      yield { type: "run.finished", ok: true };
+    },
+  };
+  const store = new SqliteStore(":memory:");
+  const project = store.createProject({ name: "p", path: process.cwd() });
+  const task = store.createTask({ projectId: project.id, title: "t", prompt: "hi" });
+  const runner = new Runner(store, [provider]);
+
+  store.setProviderSettings("fake", { permissionMode: "plan", command: "/bin/fake" });
+  await runner.runTask(task.id, { providerId: "fake" });
+  store.setProviderSettings("fake", { permissionMode: "bypassPermissions" }, project.id);
+  await runner.runTask(task.id, { providerId: "fake" });
+
+  assert.deepEqual(seen, [
+    { permissionMode: "plan", command: "/bin/fake" },
+    { permissionMode: "bypassPermissions", command: "/bin/fake" },
+  ]);
+  assert.deepEqual(checked, seen);
+});
