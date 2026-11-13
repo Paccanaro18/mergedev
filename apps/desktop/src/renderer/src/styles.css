@@ -6,6 +6,7 @@
   --border: #e2e2e8;
   --ok: #15803d;
   --bad: #b91c1c;
+  --warn: #a86a12;
   color-scheme: light dark;
   font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -19,6 +20,7 @@
     --border: #2e2e36;
     --ok: #4ade80;
     --bad: #f87171;
+    --warn: #e3a857;
   }
 }
 
@@ -51,6 +53,8 @@ li { padding: 8px 0; }
 .muted { color: var(--muted); }
 .ok { color: var(--ok); }
 .bad { color: var(--bad); }
+.warn { color: var(--warn); }
+.badge.warn { border-color: var(--warn); }
 
 button { font: inherit; color: inherit; cursor: pointer; }
 .project {
@@ -116,3 +120,13 @@ li button:disabled { opacity: 0.5; cursor: default; }
   border-radius: 6px;
 }
 .run-row:hover, .run-row.selected { border-color: var(--border); background: var(--panel); }
+
+.permission { margin: 8px 0; padding: 10px 12px; background: var(--panel); border: 1px solid transparent; border-radius: 6px; font-size: 13px; }
+.permission.waiting { border-color: var(--warn); }
+.permission-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.permission-row { display: flex; gap: 12px; padding: 2px 0; }
+.permission-row .muted { width: 80px; flex-shrink: 0; }
+.permission-input { margin: 6px 0; padding: 6px 8px; background: var(--bg); border-radius: 4px; font-size: 12px; white-space: pre-wrap; overflow: auto; max-height: 160px; }
+.permission-actions { display: flex; gap: 8px; margin-top: 8px; }
+.permission-actions button { padding: 4px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.permission-actions button:disabled { opacity: 0.5; cursor: default; }

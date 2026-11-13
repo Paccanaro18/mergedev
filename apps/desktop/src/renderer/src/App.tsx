@@ -2,7 +2,7 @@ import type { AgentEvent, Project, Task } from "@merge/core";
 import { useEffect, useState, type FormEvent } from "react";
 import type { MergeApi } from "../../shared/api";
 import { History } from "./History";
-import { RunView } from "./RunView";
+import { hasPendingPermission, RunView } from "./RunView";
 
 type ProviderInfo = Awaited<ReturnType<MergeApi["providers"]["list"]>>[number];
 
@@ -214,6 +214,9 @@ function TaskPanel(props: {
           {tasks.map((t) => (
             <li key={t.id}>
               <strong>{t.title}</strong> <span className="badge">{t.status}</span>{" "}
+              {active.has(t.id) && openTaskId === t.id && hasPendingPermission(events) && (
+                <span className="badge warn">aguardando você</span>
+              )}{" "}
               {active.has(t.id) ? (
                 <button onClick={() => onCancel(t.id)}>Cancelar</button>
               ) : (
@@ -225,7 +228,17 @@ function TaskPanel(props: {
               <button onClick={() => onOpen(t.id, "history")}>Histórico</button>
               <span className="muted prompt">{t.prompt}</span>
               {openTaskId === t.id && openMode === "live" && (
-                <RunView events={events} running={active.has(t.id)} />
+                <RunView
+                  events={events}
+                  running={active.has(t.id)}
+                  onRespondPermission={(requestId, decision) =>
+                    window.merge.runs.respondPermission(
+                      requestId,
+                      decision,
+                      decision === "deny" ? "Negado pelo usuário." : undefined,
+                    )
+                  }
+                />
               )}
               {openTaskId === t.id && openMode === "history" && (
                 <History taskId={t.id} reloadKey={active.has(t.id)} />

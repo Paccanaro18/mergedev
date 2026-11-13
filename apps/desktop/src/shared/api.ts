@@ -21,6 +21,11 @@ export interface MergeApi {
     cancel(taskId: string): Promise<void>;
     /** Past runs of a task, oldest first, with the cost recorded in their events. */
     list(taskId: string): Promise<RunSummary[]>;
+    /**
+     * Answers a `permission.requested` event, resuming the paused run. Rejects if the request
+     * is no longer waiting (already answered, or the run ended).
+     */
+    respondPermission(requestId: string, decision: "allow" | "deny", reason?: string): Promise<void>;
     /** The events recorded for a run, in order. */
     events(runId: string): Promise<AgentEvent[]>;
     /** Subscribes to live events of every run. Returns the unsubscribe function. */
@@ -47,6 +52,7 @@ export const Channels = {
   providersList: "providers:list",
   runsStart: "runs:start",
   runsCancel: "runs:cancel",
+  runsRespondPermission: "runs:respondPermission",
   runsList: "runs:list",
   runsEvents: "runs:events",
   /** Main → renderer push, not a request/response call. */
