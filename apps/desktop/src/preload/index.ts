@@ -13,8 +13,20 @@ const api: MergeApi = {
   providers: {
     list: () => ipcRenderer.invoke(Channels.providersList),
   },
+  workspace: {
+    status: (runId) => ipcRenderer.invoke(Channels.workspaceStatus, runId),
+    diff: (runId) => ipcRenderer.invoke(Channels.workspaceDiff, runId),
+    keep: (runId) => ipcRenderer.invoke(Channels.workspaceKeep, runId),
+    discard: (runId) => ipcRenderer.invoke(Channels.workspaceDiscard, runId),
+  },
+  settings: {
+    get: (providerId, projectId) => ipcRenderer.invoke(Channels.settingsGet, providerId, projectId),
+    resolve: (providerId, projectId) => ipcRenderer.invoke(Channels.settingsResolve, providerId, projectId),
+    set: (providerId, settings, projectId) =>
+      ipcRenderer.invoke(Channels.settingsSet, providerId, settings, projectId),
+  },
   runs: {
-    start: (taskId) => ipcRenderer.invoke(Channels.runsStart, taskId),
+    start: (taskId, options) => ipcRenderer.invoke(Channels.runsStart, taskId, options),
     cancel: (taskId) => ipcRenderer.invoke(Channels.runsCancel, taskId),
     respondPermission: (requestId, decision, reason) =>
       ipcRenderer.invoke(Channels.runsRespondPermission, requestId, decision, reason),
