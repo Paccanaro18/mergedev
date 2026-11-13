@@ -42,3 +42,5 @@ linux:
       arch: [x64]
   artifactName: Merge.${ext}
   category: Development
+  # The default comes from the package name (@merge/desktop), and "@" is not allowed in it.
+  executableName: merge

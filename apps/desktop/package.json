@@ -8,6 +8,7 @@
     "url": "https://github.com/Paccanaro18/mergedev"
   },
   "homepage": "https://github.com/Paccanaro18/mergedev",
+  "desktopName": "merge.desktop",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "tsc -b ../.. && electron-vite dev",
