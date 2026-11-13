@@ -1,27 +1,74 @@
-:root {
-  --bg: #ffffff;
-  --panel: #f4f4f6;
-  --text: #1c1c1f;
-  --muted: #6b6b76;
-  --border: #e2e2e8;
-  --ok: #15803d;
-  --bad: #b91c1c;
-  --warn: #a86a12;
-  color-scheme: light dark;
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+/*
+ * Tokens do design (Paper, arquivo MERGE DEV, artboard "00 — Tokens").
+ * O app é só tema escuro. Valores do Paper: background #141413, foreground #FAF9F5,
+ * accent #D97757, accent-shade #8F4A33, raios 16/20/999, espaços 8/16/32.
+ * Derivados (não estão no Paper): --panel (igual ao painel da landing) e
+ * --ok/--bad/--warn (cores de estado que o app já usava).
+ */
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./assets/fonts/poppins-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("./assets/fonts/poppins-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Lora";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./assets/fonts/lora-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("./assets/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #17171a;
-    --panel: #1f1f24;
-    --text: #ececf0;
-    --muted: #9a9aa6;
-    --border: #2e2e36;
-    --ok: #4ade80;
-    --bad: #f87171;
-    --warn: #e3a857;
-  }
+:root {
+  color-scheme: dark;
+
+  --font-heading: "Poppins", system-ui, sans-serif;
+  --font-body: "Lora", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+
+  --fg-rgb: 250 249 245;
+  --bg: #141413;
+  --panel: #1d1d1b;
+  --text: #faf9f5;
+  --muted: rgb(var(--fg-rgb) / 0.7);
+  --border: rgb(var(--fg-rgb) / 0.2);
+  --line: rgb(var(--fg-rgb) / 0.25);
+  --surface: rgb(var(--fg-rgb) / 0.05);
+  --accent: #d97757;
+  --accent-shade: #8f4a33;
+  --on-accent: #141413;
+  --focus: #faf9f5;
+  --ok: #4ade80;
+  --bad: #f87171;
+  --warn: #e3a857;
+
+  --space-2: 8px;
+  --space-4: 16px;
+  --space-8: 32px;
+  --radius-sm: 8px;
+  --radius-md: 16px;
+  --radius-lg: 20px;
+  --radius-full: 999px;
+
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
 }
 
 * { box-sizing: border-box; }
@@ -31,6 +78,9 @@ body {
   background: var(--bg);
   color: var(--text);
 }
+
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+::selection { background: var(--accent-shade); color: var(--text); }
 
 .app { display: flex; height: 100vh; }
 
@@ -44,8 +94,8 @@ body {
 
 .content { flex: 1; padding: 16px 24px; overflow-y: auto; }
 
-h1 { font-size: 18px; margin: 0 0 16px; }
-h2 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+h1 { font-family: var(--font-heading); font-weight: 600; font-size: 18px; letter-spacing: -0.02em; margin: 0 0 16px; }
+h2 { font-family: var(--font-heading); font-weight: 500; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 
 ul { list-style: none; padding: 0; margin: 0; }
 li { padding: 8px 0; }
@@ -56,23 +106,25 @@ li { padding: 8px 0; }
 .warn { color: var(--warn); }
 .badge.warn { border-color: var(--warn); }
 
-button { font: inherit; color: inherit; cursor: pointer; }
+button { font: inherit; font-family: var(--font-heading); font-weight: 500; font-size: 13px; color: inherit; cursor: pointer; }
 .project {
   width: 100%;
   text-align: left;
   padding: 8px;
   background: none;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 .project.selected { border-color: var(--border); background: var(--bg); }
 .primary {
   margin-top: 8px;
   padding: 6px 12px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--on-accent);
 }
+.primary:hover:not(:disabled) { filter: brightness(1.08); }
 .primary:disabled { opacity: 0.5; cursor: default; }
 .error {
   display: flex;
@@ -81,11 +133,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
   padding: 8px 12px;
   margin-bottom: 12px;
   border: 1px solid var(--bad);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   color: var(--bad);
 }
 .error button { background: none; border: none; text-decoration: underline; }
-.badge { font-size: 11px; padding: 1px 6px; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); }
+.badge { font-size: 11px; padding: 1px 6px; border: 1px solid var(--border); border-radius: var(--radius-full); color: var(--muted); }
 .prompt { display: block; font-size: 13px; white-space: pre-wrap; }
 .task-form { display: flex; flex-direction: column; gap: 8px; max-width: 560px; margin-top: 16px; }
 .task-form input, .task-form textarea {
@@ -94,18 +146,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
   color: inherit;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 .task-form .primary { align-self: flex-start; }
 
-li button { padding: 2px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+li button { padding: 2px 8px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
 li button:disabled { opacity: 0.5; cursor: default; }
 .run { margin: 8px 0 4px; padding: 8px 12px; border-left: 2px solid var(--border); }
 .run p { margin: 6px 0; white-space: pre-wrap; }
 .msg.user { color: var(--muted); }
 .tool { margin: 6px 0; font-size: 13px; }
 .tool summary { cursor: pointer; }
-.tool pre { margin: 4px 0; padding: 6px 8px; max-height: 200px; overflow: auto; background: var(--panel); border-radius: 6px; font-size: 12px; white-space: pre-wrap; }
+.tool pre { font-family: var(--font-mono); margin: 4px 0; padding: 6px 8px; max-height: 200px; overflow: auto; background: var(--panel); border-radius: var(--radius-sm); font-size: 12px; white-space: pre-wrap; }
 
 .history { margin: 8px 0; }
 .run-row {
@@ -117,52 +169,52 @@ li button:disabled { opacity: 0.5; cursor: default; }
   text-align: left;
   background: none;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 .run-row:hover, .run-row.selected { border-color: var(--border); background: var(--panel); }
 
-.permission { margin: 8px 0; padding: 10px 12px; background: var(--panel); border: 1px solid transparent; border-radius: 6px; font-size: 13px; }
+.permission { margin: 8px 0; padding: 10px 12px; background: var(--panel); border: 1px solid transparent; border-radius: var(--radius-sm); font-size: 13px; }
 .permission.waiting { border-color: var(--warn); }
 .permission-head { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
 .permission-row { display: flex; gap: 12px; padding: 2px 0; }
 .permission-row .muted { width: 80px; flex-shrink: 0; }
-.permission-input { margin: 6px 0; padding: 6px 8px; background: var(--bg); border-radius: 4px; font-size: 12px; white-space: pre-wrap; overflow: auto; max-height: 160px; }
+.permission-input { font-family: var(--font-mono); margin: 6px 0; padding: 6px 8px; background: var(--bg); border-radius: var(--radius-sm); font-size: 12px; white-space: pre-wrap; overflow: auto; max-height: 160px; }
 .permission-actions { display: flex; gap: 8px; margin-top: 8px; }
-.permission-actions button { padding: 4px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.permission-actions button { padding: 4px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
 .permission-actions button:disabled { opacity: 0.5; cursor: default; }
 
 .changes { margin: 12px 0; padding: 8px 0 0 12px; border-left: 2px solid var(--border); }
 .changes h3 { margin: 0 0 6px; font-size: 13px; }
-.changes code { font-size: 12px; }
+.changes code { font-family: var(--font-mono); font-size: 12px; }
 .files { margin: 4px 0; }
 .files li { display: flex; gap: 8px; align-items: baseline; padding: 1px 0; font-size: 13px; }
 .file-status { width: 80px; flex-shrink: 0; font-size: 12px; color: var(--muted); }
 .file-status.added { color: var(--ok); }
 .file-status.deleted { color: var(--bad); }
-.patch { margin: 6px 0; max-height: 360px; overflow: auto; background: var(--panel); border-radius: 6px; padding: 6px 0; font-size: 12px; }
+.patch { font-family: var(--font-mono); margin: 6px 0; max-height: 360px; overflow: auto; background: var(--panel); border-radius: var(--radius-sm); padding: 6px 0; font-size: 12px; }
 .patch-line { padding: 0 8px; white-space: pre; }
 .patch-line.add { color: var(--ok); }
 .patch-line.del { color: var(--bad); }
 .patch-line.hunk, .patch-line.meta { color: var(--muted); }
 .changes-actions { display: flex; gap: 8px; margin: 8px 0; }
-.changes-actions button { padding: 4px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.changes-actions button { padding: 4px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
 .changes-actions button:disabled { opacity: 0.5; cursor: default; }
 .changes-actions .danger { color: var(--bad); border-color: var(--bad); }
 .changes-actions .primary { margin-top: 0; }
 
-.sidebar > button:last-child { margin-top: 12px; padding: 4px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.sidebar > button:last-child { margin-top: 12px; padding: 4px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
 .settings { max-width: 640px; }
 .settings-scope { display: flex; gap: 16px; margin-bottom: 8px; }
 .settings label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
 .settings select, .settings input:not([type="radio"]), .settings textarea {
-  font: inherit; color: var(--text); padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  font: inherit; color: var(--text); padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm);
 }
-.settings textarea { font-family: ui-monospace, Consolas, monospace; font-size: 12px; width: 100%; }
-.settings input:not([type="radio"]) { width: 100%; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.settings textarea { font-family: var(--font-mono); font-size: 12px; width: 100%; }
+.settings input:not([type="radio"]) { width: 100%; font-family: var(--font-mono); font-size: 12px; }
 .settings-block { margin: 20px 0; }
 .settings-block h3 { margin: 0 0 6px; font-size: 13px; }
 .settings-block p { margin: 4px 0; font-size: 13px; }
-.settings-block button, .settings-actions button { padding: 3px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+.settings-block button, .settings-actions button { padding: 3px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); }
 .settings-actions button:disabled { opacity: 0.5; cursor: default; }
 .mode-list { display: flex; flex-direction: column; gap: 6px; }
 .settings .mode { flex-direction: row; align-items: flex-start; gap: 8px; color: var(--text); font-size: 13px; }
@@ -172,7 +224,7 @@ li button:disabled { opacity: 0.5; cursor: default; }
 
 .follow-up { display: flex; flex-direction: column; gap: 6px; max-width: 560px; margin: 12px 0; padding-left: 12px; font-size: 13px; }
 .follow-up label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--muted); }
-.follow-up textarea { font: inherit; color: var(--text); padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; }
+.follow-up textarea { font: inherit; color: var(--text); padding: 6px 8px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); }
 .follow-up .primary { align-self: flex-start; margin-top: 0; }
 
 .isolate { font-size: 12px; color: var(--muted); white-space: nowrap; }
