@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { app, BrowserWindow, ipcMain } from "electron";
+import { basename, join } from "node:path";
+import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { ClaudeCodeProvider } from "@merge/providers";
 import { Runner } from "@merge/runner";
 import { SqliteStore } from "@merge/store";
@@ -8,6 +8,30 @@ import { Channels } from "../shared/api";
 
 function registerIpc(store: SqliteStore, runner: Runner): void {
   ipcMain.handle(Channels.projectsList, () => store.listProjects());
+  ipcMain.handle(Channels.projectsAdd, async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const options = { properties: ["openDirectory" as const], title: "Escolha a pasta do projeto" };
+    const result = win ? await dialog.showOpenDialog(win, options) : await dialog.showOpenDialog(options);
+    const path = result.filePaths[0];
+    if (result.canceled || !path) return null;
+    if (store.listProjects().some((p) => p.path === path)) {
+      throw new Error("Essa pasta já está cadastrada como projeto.");
+    }
+    return store.createProject({ name: basename(path), path });
+  });
+
+  ipcMain.handle(Channels.tasksList, (_e, projectId: string) => store.listTasks(projectId));
+  ipcMain.handle(
+    Channels.tasksCreate,
+    (_e, input: { projectId: string; title: string; prompt: string }) => {
+      const title = input.title.trim();
+      const prompt = input.prompt.trim();
+      if (!title) throw new Error("Informe um título para a tarefa.");
+      if (!prompt) throw new Error("Informe o que o agente deve fazer.");
+      if (!store.getProject(input.projectId)) throw new Error("Projeto não encontrado.");
+      return store.createTask({ projectId: input.projectId, title, prompt });
+    },
+  );
   ipcMain.handle(Channels.providersList, async () =>
     Promise.all(
       runner.listProviders().map(async (p) => ({
