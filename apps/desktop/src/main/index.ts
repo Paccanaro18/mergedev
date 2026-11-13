@@ -1,14 +1,48 @@
-import { writeFileSync } from "node:fs";
+import { execFile } from "node:child_process";
+import { existsSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
+import { promisify } from "node:util";
 import { app, BrowserWindow, dialog, ipcMain } from "electron";
 import { ClaudeCodeProvider } from "@merge/providers";
-import type { PermissionDecision } from "@merge/core";
+import type { AgentEvent, PermissionDecision, PermissionMode, ProviderSettings } from "@merge/core";
 import { Runner } from "@merge/runner";
 import { SqliteStore } from "@merge/store";
-import { WorktreeManager } from "@merge/workspace";
-import { Channels, type RunSummary, type StartRunOptions } from "../shared/api";
-import { registerSettingsIpc } from "./settings-ipc";
-import { registerWorkspaceIpc } from "./workspace-ipc";
+import { WorktreeManager, type Workspace } from "@merge/workspace";
+import { Channels, type RunChanges, type RunSummary, type StartOptions } from "../shared/api";
+
+const execFileAsync = promisify(execFile);
+
+/** True when `git <args>` succeeds in `cwd`. */
+async function gitSucceeds(cwd: string, args: string[]): Promise<boolean> {
+  try {
+    await execFileAsync("git", args, { cwd });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** An isolated run needs a git repository with at least one commit to branch from. */
+const canIsolate = (projectPath: string) => gitSucceeds(projectPath, ["rev-parse", "--verify", "HEAD"]);
+
+const PERMISSION_MODES: PermissionMode[] = ["default", "acceptEdits", "plan", "bypassPermissions"];
+
+/** Validates what came from the renderer and drops empty values, so only real choices are saved. */
+function cleanSettings(input: ProviderSettings): ProviderSettings {
+  const out: ProviderSettings = {};
+  if (input.permissionMode !== undefined) {
+    if (!PERMISSION_MODES.includes(input.permissionMode)) throw new Error("Modo de permissão inválido.");
+    out.permissionMode = input.permissionMode;
+  }
+  const tools = [...new Set((input.allowedTools ?? []).map((t) => String(t).trim()).filter(Boolean))];
+  if (tools.length > 0) out.allowedTools = tools;
+  const command = input.command?.trim();
+  if (command) out.command = command;
+  return out;
+}
+
+/** Runs whose worktree is being kept or discarded right now, so a double click does not run twice. */
+const finishing = new Set<string>();
 
 /** Active runs by task id, so they can be cancelled. */
 const running = new Map<string, AbortController>();
@@ -17,8 +51,28 @@ const running = new Map<string, AbortController>();
 const pendingPermissions = new Map<string, (decision: PermissionDecision) => void>();
 
 function registerIpc(store: SqliteStore, runner: Runner, worktrees: WorktreeManager): void {
-  registerWorkspaceIpc(store, worktrees, running);
-  registerSettingsIpc(store, () => runner.listProviders().map((p) => p.id));
+  /** The worktree of an isolated run, rebuilt from its workspace.created event. Null if the run was not isolated. */
+  function workspaceOf(taskId: string, runId: string): { ws: Workspace; running: boolean } | null {
+    const task = store.getTask(taskId);
+    const project = task && store.getProject(task.projectId);
+    const run = store.listRuns(taskId).find((r) => r.id === runId);
+    if (!project || !run) throw new Error("Run não encontrado.");
+    const created = store
+      .listEvents(runId)
+      .find((e): e is Extract<AgentEvent, { type: "workspace.created" }> => e.type === "workspace.created");
+    if (!created) return null;
+    const { path, branch, baseCommit } = created;
+    return { ws: { repoPath: project.path, path, branch, baseCommit }, running: run.status === "running" };
+  }
+
+  /** The worktree of a run that is finished and still on disk; throws a readable error otherwise. */
+  function pendingWorkspace(taskId: string, runId: string): Workspace {
+    const found = workspaceOf(taskId, runId);
+    if (!found) throw new Error("Este run não foi executado em um worktree isolado.");
+    if (found.running) throw new Error("Espere o run terminar.");
+    if (!existsSync(found.ws.path)) throw new Error("A pasta isolada deste run já foi removida (mantida ou descartada).");
+    return found.ws;
+  }
 
   ipcMain.handle(Channels.projectsList, () => store.listProjects());
   ipcMain.handle(Channels.projectsAdd, async (event) => {
@@ -45,16 +99,31 @@ function registerIpc(store: SqliteStore, runner: Runner, worktrees: WorktreeMana
       return store.createTask({ projectId: input.projectId, title, prompt });
     },
   );
-  ipcMain.handle(Channels.runsStart, async (event, taskId: string, options: StartRunOptions = {}) => {
+  ipcMain.handle(Channels.runsStart, async (event, taskId: string, options?: StartOptions) => {
     if (running.has(taskId)) throw new Error("Esta tarefa já está em execução.");
+    const followUp = options?.followUp;
+    // Isolation is on unless the user turned it off for this run.
+    const wantsIsolation = options?.isolate !== false;
+    if (followUp && !followUp.prompt?.trim()) throw new Error("Escreva a nova instrução.");
     const controller = new AbortController();
     running.set(taskId, controller);
     try {
+      const task = store.getTask(taskId);
+      const project = task && store.getProject(task.projectId);
+      // A follow-up continues where the earlier run was: the runner reuses that run's worktree, or
+      // the project folder when it was not isolated (a session only resumes from the same folder).
+      const isolate = !followUp && wantsIsolation && project ? await canIsolate(project.path) : false;
+      if (!followUp && wantsIsolation && !isolate && !event.sender.isDestroyed()) {
+        event.sender.send(Channels.runsNotice, {
+          taskId,
+          message:
+            "Esta pasta não é um repositório git com ao menos um commit, então o agente vai rodar direto nela, sem isolamento. Faça um commit inicial para rodar em um worktree.",
+        });
+      }
       return await runner.runTask(taskId, {
         providerId: "claude-code",
-        isolate: options.isolate === true,
-        resumeFromRunId: options.resumeFromRunId,
-        prompt: options.prompt,
+        isolate,
+        ...(followUp ? { resumeFromRunId: followUp.resumeFromRunId, prompt: followUp.prompt.trim() } : {}),
         signal: controller.signal,
         // Pauses the run until the user answers through runs:respondPermission.
         // On cancel the adapter stops waiting by itself (it watches the signal); we only drop the entry.
@@ -90,6 +159,39 @@ function registerIpc(store: SqliteStore, runner: Runner, worktrees: WorktreeMana
       answer({ decision, reason });
     },
   );
+  ipcMain.handle(Channels.runsChanges, async (_e, taskId: string, runId: string): Promise<RunChanges> => {
+    const found = workspaceOf(taskId, runId);
+    if (!found) return { state: "none" };
+    const { ws, running: active } = found;
+    if (active) return { state: "running" };
+    if (existsSync(ws.path)) {
+      const { files, patch } = await worktrees.diff(ws);
+      return { state: "pending", branch: ws.branch, files, patch };
+    }
+    // The folder is gone: it was kept (branch stays) or discarded (branch deleted).
+    const branchExists = await gitSucceeds(ws.repoPath, ["rev-parse", "--verify", "--quiet", `refs/heads/${ws.branch}`]);
+    return branchExists ? { state: "kept", branch: ws.branch } : { state: "discarded", branch: ws.branch };
+  });
+  ipcMain.handle(Channels.runsKeepChanges, async (_e, taskId: string, runId: string) => {
+    const ws = pendingWorkspace(taskId, runId);
+    if (finishing.has(runId)) throw new Error("Já há uma operação em andamento neste run.");
+    finishing.add(runId);
+    try {
+      return await worktrees.keep(ws);
+    } finally {
+      finishing.delete(runId);
+    }
+  });
+  ipcMain.handle(Channels.runsDiscardChanges, async (_e, taskId: string, runId: string) => {
+    const ws = pendingWorkspace(taskId, runId);
+    if (finishing.has(runId)) throw new Error("Já há uma operação em andamento neste run.");
+    finishing.add(runId);
+    try {
+      await worktrees.discard(ws);
+    } finally {
+      finishing.delete(runId);
+    }
+  });
   ipcMain.handle(Channels.runsList, (_e, taskId: string): RunSummary[] =>
     store.listRuns(taskId).map((run) => {
       const finished = store.listEvents(run.id).find((e) => e.type === "run.finished");
@@ -107,6 +209,31 @@ function registerIpc(store: SqliteStore, runner: Runner, worktrees: WorktreeMana
       })),
     ),
   );
+  const findProvider = (providerId: string) => {
+    const provider = runner.listProviders().find((p) => p.id === providerId);
+    if (!provider) throw new Error("Provider desconhecido.");
+    return provider;
+  };
+  const assertProject = (projectId?: string) => {
+    if (projectId !== undefined && !store.getProject(projectId)) throw new Error("Projeto não encontrado.");
+  };
+  ipcMain.handle(Channels.providersCheck, (_e, providerId: string, projectId?: string) => {
+    const provider = findProvider(providerId);
+    assertProject(projectId);
+    return provider.check(
+      projectId ? store.resolveProviderSettings(providerId, projectId) : store.getProviderSettings(providerId),
+    );
+  });
+  ipcMain.handle(Channels.settingsGet, (_e, providerId: string, projectId?: string) => {
+    findProvider(providerId);
+    assertProject(projectId);
+    return store.getProviderSettings(providerId, projectId);
+  });
+  ipcMain.handle(Channels.settingsSet, (_e, providerId: string, settings: ProviderSettings, projectId?: string) => {
+    findProvider(providerId);
+    assertProject(projectId);
+    store.setProviderSettings(providerId, cleanSettings(settings), projectId);
+  });
 }
 
 function createWindow(): BrowserWindow {
@@ -137,7 +264,7 @@ function createWindow(): BrowserWindow {
 void app.whenReady().then(() => {
   const dbPath = process.env.MERGE_DB_PATH ?? join(app.getPath("userData"), "merge.db");
   const store = new SqliteStore(dbPath);
-  const worktrees = new WorktreeManager(join(app.getPath("userData"), "worktrees"));
+  const worktrees = new WorktreeManager(process.env.MERGE_WORKTREES_DIR ?? join(app.getPath("userData"), "worktrees"));
   const runner = new Runner(store, [new ClaudeCodeProvider()], worktrees);
   registerIpc(store, runner, worktrees);
 

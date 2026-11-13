@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
-import { Channels, type MergeApi, type RunEventMessage } from "../shared/api";
+import { Channels, type MergeApi, type RunEventMessage, type RunNoticeMessage } from "../shared/api";
 
 const api: MergeApi = {
   projects: {
@@ -12,24 +12,25 @@ const api: MergeApi = {
   },
   providers: {
     list: () => ipcRenderer.invoke(Channels.providersList),
-  },
-  workspace: {
-    status: (runId) => ipcRenderer.invoke(Channels.workspaceStatus, runId),
-    diff: (runId) => ipcRenderer.invoke(Channels.workspaceDiff, runId),
-    keep: (runId) => ipcRenderer.invoke(Channels.workspaceKeep, runId),
-    discard: (runId) => ipcRenderer.invoke(Channels.workspaceDiscard, runId),
+    check: (providerId, projectId) => ipcRenderer.invoke(Channels.providersCheck, providerId, projectId),
   },
   settings: {
     get: (providerId, projectId) => ipcRenderer.invoke(Channels.settingsGet, providerId, projectId),
-    resolve: (providerId, projectId) => ipcRenderer.invoke(Channels.settingsResolve, providerId, projectId),
-    set: (providerId, settings, projectId) =>
-      ipcRenderer.invoke(Channels.settingsSet, providerId, settings, projectId),
+    set: (providerId, settings, projectId) => ipcRenderer.invoke(Channels.settingsSet, providerId, settings, projectId),
   },
   runs: {
     start: (taskId, options) => ipcRenderer.invoke(Channels.runsStart, taskId, options),
     cancel: (taskId) => ipcRenderer.invoke(Channels.runsCancel, taskId),
     respondPermission: (requestId, decision, reason) =>
       ipcRenderer.invoke(Channels.runsRespondPermission, requestId, decision, reason),
+    changes: (taskId, runId) => ipcRenderer.invoke(Channels.runsChanges, taskId, runId),
+    keepChanges: (taskId, runId) => ipcRenderer.invoke(Channels.runsKeepChanges, taskId, runId),
+    discardChanges: (taskId, runId) => ipcRenderer.invoke(Channels.runsDiscardChanges, taskId, runId),
+    onNotice: (listener) => {
+      const handler = (_e: IpcRendererEvent, message: RunNoticeMessage) => listener(message);
+      ipcRenderer.on(Channels.runsNotice, handler);
+      return () => ipcRenderer.removeListener(Channels.runsNotice, handler);
+    },
     list: (taskId) => ipcRenderer.invoke(Channels.runsList, taskId),
     events: (runId) => ipcRenderer.invoke(Channels.runsEvents, runId),
     onEvent: (listener) => {

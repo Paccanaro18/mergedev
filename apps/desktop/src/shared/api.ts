@@ -1,5 +1,4 @@
 import type { AgentEvent, Project, ProviderSettings, ProviderStatus, Run, Task } from "@merge/core";
-import type { WorkspaceDiff } from "@merge/workspace";
 
 /** Contract between the renderer and the main process. Add new calls here first. */
 export interface MergeApi {
@@ -13,33 +12,34 @@ export interface MergeApi {
     create(input: { projectId: string; title: string; prompt: string }): Promise<Task>;
   };
   providers: {
+    /** Every provider with its status, checked with its global settings (e.g. the binary path). */
     list(): Promise<Array<{ id: string; displayName: string; status: ProviderStatus }>>;
+    /**
+     * Checks one provider with the settings that would apply to a run: the project's over the
+     * global ones when `projectId` is given, otherwise the global ones. It only confirms that the
+     * command runs (`--version`); it does not tell whether the user is logged in.
+     */
+    check(providerId: string, projectId?: string): Promise<ProviderStatus>;
   };
-  /** Isolated git worktree of a run (see `StartRunOptions.isolate`). Addressed by run id. */
-  workspace: {
-    status(runId: string): Promise<WorkspaceStatus>;
-    /** Everything the run changed, committed or not. Rejects unless the worktree is `active`. */
-    diff(runId: string): Promise<WorkspaceDiff>;
-    /** Commits pending changes and removes the worktree folder; the branch stays. Rejects unless `active`. */
-    keep(runId: string): Promise<{ branch: string; committed: boolean }>;
-    /** Removes the worktree folder and deletes the branch. Rejects unless `active`. */
-    discard(runId: string): Promise<void>;
-  };
-  /** Per-provider settings, global or for one project. */
   settings: {
-    /** Only what is saved in that scope (global when `projectId` is omitted). */
+    /** The settings saved for exactly one scope: a project when `projectId` is given, otherwise global. */
     get(providerId: string, projectId?: string): Promise<ProviderSettings>;
-    /** What the next run will use: the project's values over the global ones. */
-    resolve(providerId: string, projectId: string): Promise<ProviderSettings>;
-    /** Replaces the scope's settings; empty or missing fields are cleared. */
+    /** Replaces the settings of one scope. `{}` clears it. Applies from the next run. */
     set(providerId: string, settings: ProviderSettings, projectId?: string): Promise<void>;
   };
   runs: {
     /**
      * Runs the task with Claude Code. Resolves when the run ends; rejects if the provider is unavailable.
-     * With `resumeFromRunId` it is a follow-up and `prompt` (the new instruction) is required.
+     *
+     * `isolate` (default true) runs it in an isolated git worktree. That needs the project folder to be
+     * a git repository with at least one commit; otherwise it runs in the folder itself, with a notice.
+     * With `isolate: false` the agent works directly in the project folder.
+     *
+     * With `followUp` it instead continues the conversation of an earlier run of the task with a
+     * new instruction. The agent keeps that run's context, and an isolated run continues in its own
+     * worktree (`isolate` is ignored), so it is refused once that worktree was kept or discarded.
      */
-    start(taskId: string, options?: StartRunOptions): Promise<Run>;
+    start(taskId: string, options?: StartOptions): Promise<Run>;
     /** Stops the task's running process, if any. */
     cancel(taskId: string): Promise<void>;
     /** Past runs of a task, oldest first, with the cost recorded in their events. */
@@ -51,36 +51,46 @@ export interface MergeApi {
     respondPermission(requestId: string, decision: "allow" | "deny", reason?: string): Promise<void>;
     /** The events recorded for a run, in order. */
     events(runId: string): Promise<AgentEvent[]>;
+    /**
+     * What an isolated run changed: files and patch while the worktree exists, or the final result
+     * (kept or discarded) once it was removed. State "none" means the run was not isolated.
+     */
+    changes(taskId: string, runId: string): Promise<RunChanges>;
+    /** Commits pending changes to the run's branch and removes the worktree folder; the branch stays. */
+    keepChanges(taskId: string, runId: string): Promise<{ branch: string; committed: boolean }>;
+    /** Removes the worktree folder and deletes the run's branch. */
+    discardChanges(taskId: string, runId: string): Promise<void>;
+    /** Subscribes to warnings about a run that is about to start (e.g. it will not be isolated). */
+    onNotice(listener: (message: RunNoticeMessage) => void): () => void;
     /** Subscribes to live events of every run. Returns the unsubscribe function. */
     onEvent(listener: (message: RunEventMessage) => void): () => void;
   };
 }
 
-export interface StartRunOptions {
-  /**
-   * Run in its own git worktree and branch instead of the project folder. If the project is not a
-   * git repo with at least one commit, `start` still resolves, but the run is `failed` and its
-   * events hold an `error` (e.g. "git rev-parse failed: ...").
-   */
+export interface StartOptions {
   isolate?: boolean;
-  /** Continue the conversation of this earlier run of the same task. */
-  resumeFromRunId?: string;
-  /** The new instruction for a follow-up. */
-  prompt?: string;
+  followUp?: { resumeFromRunId: string; prompt: string };
 }
-
-/**
- * - `none`: the run was not isolated.
- * - `active`: the worktree folder exists; diff, keep and discard are available.
- * - `kept`: the folder was removed and the branch stays.
- * - `discarded`: the folder and the branch are gone.
- */
-export type WorkspaceStatus =
-  | { state: "none" }
-  | { state: "active" | "kept" | "discarded"; path: string; branch: string; baseCommit: string };
 
 export interface RunSummary extends Run {
   costUsd?: number;
+}
+
+export interface ChangedFile {
+  path: string;
+  status: "added" | "modified" | "deleted" | "renamed" | "other";
+}
+
+export type RunChanges =
+  | { state: "none" }
+  | { state: "running" }
+  | { state: "pending"; branch: string; files: ChangedFile[]; patch: string }
+  | { state: "kept"; branch: string }
+  | { state: "discarded"; branch: string };
+
+export interface RunNoticeMessage {
+  taskId: string;
+  message: string;
 }
 
 export interface RunEventMessage {
@@ -96,18 +106,19 @@ export const Channels = {
   tasksList: "tasks:list",
   tasksCreate: "tasks:create",
   providersList: "providers:list",
-  workspaceStatus: "workspace:status",
-  workspaceDiff: "workspace:diff",
-  workspaceKeep: "workspace:keep",
-  workspaceDiscard: "workspace:discard",
+  providersCheck: "providers:check",
   settingsGet: "settings:get",
-  settingsResolve: "settings:resolve",
   settingsSet: "settings:set",
   runsStart: "runs:start",
   runsCancel: "runs:cancel",
   runsRespondPermission: "runs:respondPermission",
+  runsChanges: "runs:changes",
+  runsKeepChanges: "runs:keepChanges",
+  runsDiscardChanges: "runs:discardChanges",
   runsList: "runs:list",
   runsEvents: "runs:events",
   /** Main → renderer push, not a request/response call. */
   runsEvent: "runs:event",
+  /** Main → renderer push: a warning about a run that is starting. */
+  runsNotice: "runs:notice",
 } as const;
