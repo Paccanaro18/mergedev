@@ -19,7 +19,7 @@ const api: MergeApi = {
     set: (providerId, settings, projectId) => ipcRenderer.invoke(Channels.settingsSet, providerId, settings, projectId),
   },
   runs: {
-    start: (taskId, followUp) => ipcRenderer.invoke(Channels.runsStart, taskId, followUp),
+    start: (taskId, options) => ipcRenderer.invoke(Channels.runsStart, taskId, options),
     cancel: (taskId) => ipcRenderer.invoke(Channels.runsCancel, taskId),
     respondPermission: (requestId, decision, reason) =>
       ipcRenderer.invoke(Channels.runsRespondPermission, requestId, decision, reason),
