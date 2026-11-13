@@ -1,4 +1,4 @@
-import type { Project, ProviderStatus, Task } from "@merge/core";
+import type { AgentEvent, Project, ProviderStatus, Run, Task } from "@merge/core";
 
 /** Contract between the renderer and the main process. Add new calls here first. */
 export interface MergeApi {
@@ -14,6 +14,20 @@ export interface MergeApi {
   providers: {
     list(): Promise<Array<{ id: string; displayName: string; status: ProviderStatus }>>;
   };
+  runs: {
+    /** Runs the task with Claude Code. Resolves when the run ends; rejects if the provider is unavailable. */
+    start(taskId: string): Promise<Run>;
+    /** Stops the task's running process, if any. */
+    cancel(taskId: string): Promise<void>;
+    /** Subscribes to live events of every run. Returns the unsubscribe function. */
+    onEvent(listener: (message: RunEventMessage) => void): () => void;
+  };
+}
+
+export interface RunEventMessage {
+  taskId: string;
+  runId: string;
+  event: AgentEvent;
 }
 
 /** IPC channel names, one per API method. */
@@ -23,4 +37,8 @@ export const Channels = {
   tasksList: "tasks:list",
   tasksCreate: "tasks:create",
   providersList: "providers:list",
+  runsStart: "runs:start",
+  runsCancel: "runs:cancel",
+  /** Main → renderer push, not a request/response call. */
+  runsEvent: "runs:event",
 } as const;
