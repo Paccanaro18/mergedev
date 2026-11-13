@@ -2,28 +2,35 @@
   "name": "@merge/desktop",
   "version": "0.0.0",
   "private": true,
+  "description": "Merge: orquestre agentes de código (Claude Code e outros) nos seus projetos, direto no seu computador.",
+  "author": {
+    "name": "Merge contributors",
+    "url": "https://github.com/Paccanaro18/mergedev"
+  },
+  "homepage": "https://github.com/Paccanaro18/mergedev",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "tsc -b ../.. && electron-vite dev",
     "build": "tsc -b ../.. && electron-vite build",
     "start": "electron-vite preview",
-    "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json"
+    "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json",
+    "package": "npm run build && electron-builder --publish never",
+    "package:dir": "npm run build && electron-builder --dir --publish never"
   },
-  "dependencies": {
+  "devDependencies": {
     "@merge/core": "*",
     "@merge/providers": "*",
     "@merge/runner": "*",
     "@merge/store": "*",
     "@merge/workspace": "*",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0"
-  },
-  "devDependencies": {
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
-    "electron": "^45.3.2",
+    "electron": "45.3.2",
+    "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
     "vite": "^8.3.8"
   }
 }

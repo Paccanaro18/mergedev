@@ -1,0 +1,44 @@
+# Packaging for the Merge desktop app. Run with `npm run package -w @merge/desktop`.
+# File names are fixed (no version) because the landing page links to
+# https://github.com/Paccanaro18/mergedev/releases/latest/download/<name>.
+# Keep them in sync with apps/landing/src/config.ts.
+appId: io.github.paccanaro18.merge
+productName: Merge
+copyright: Merge contributors
+
+directories:
+  output: release
+  buildResources: build
+
+# Everything is bundled by electron-vite into out/, so no node_modules goes in the app.
+files:
+  - out/**
+  - package.json
+asar: true
+
+# MVP: installers are NOT code signed. Releases are built by CI only.
+# Never put signing certificates or passwords in this file or in the repo.
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: Merge-Setup.${ext}
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+
+mac:
+  target:
+    - target: dmg
+      arch: [universal]
+  artifactName: Merge.${ext}
+  category: public.app-category.developer-tools
+  identity: null
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  artifactName: Merge.${ext}
+  category: Development
