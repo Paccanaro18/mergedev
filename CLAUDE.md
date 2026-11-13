@@ -14,6 +14,7 @@ Plataforma desktop (Electron + TypeScript) que orquestra agentes de código (Cla
 ## Fluxo de trabalho
 
 - Uma feature = uma branch `feature/...` a partir da `main` atualizada = uma PR. **O dono do projeto aceita a PR no GitHub**; nunca faça push direto na `main`.
+- **Nunca abra PR empilhada**: toda PR tem base `main`. Se uma depende de outra, espere a anterior ser mesclada e atualize a `main`. (PRs empilhadas foram mescladas duas vezes dentro de outras branches e o trabalho nunca chegou na `main`.) Depois do merge, confira com `git log origin/main` que o seu commit entrou.
 - **Commits e PRs sem nenhuma marca ou atribuição do Claude** (sem `Co-Authored-By`, sem "Generated with").
 - Título de PR e de commit com prefixo `feat:`, `fix:` ou `chore:` (o release-please, em implantação, decide a versão do app por eles). Mudança só de documentação: `docs:`.
 - Antes de abrir a PR: `npx tsc -b` e os testes dos pacotes tocados. Se mexeu no desktop: `npm run typecheck -w @merge/desktop`. Se mexeu na landing: `npm run build -w @merge/landing`.
