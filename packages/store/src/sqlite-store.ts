@@ -1,6 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import type { AgentEvent, Id, Project, Run, Store, Task } from "@merge/core";
+import type {
+  AgentEvent,
+  Id,
+  PermissionMode,
+  Project,
+  ProviderSettings,
+  Run,
+  Store,
+  Task,
+} from "@merge/core";
 import { MIGRATIONS } from "./schema.js";
 
 type Row = Record<string, unknown>;
@@ -121,6 +130,41 @@ export class SqliteStore implements Store {
     this.db
       .prepare("UPDATE runs SET status = ?, finished_at = ? WHERE id = ?")
       .run(status, Date.now(), runId);
+  }
+
+  getProviderSettings(providerId: string, projectId?: Id): ProviderSettings {
+    const row = this.db
+      .prepare("SELECT * FROM provider_settings WHERE provider_id = ? AND project_id = ?")
+      .get(providerId, projectId ?? "");
+    if (!row) return {};
+    const settings: ProviderSettings = {};
+    if (row.permission_mode != null) settings.permissionMode = row.permission_mode as PermissionMode;
+    if (row.allowed_tools != null) settings.allowedTools = JSON.parse(row.allowed_tools as string);
+    if (row.command != null) settings.command = row.command as string;
+    return settings;
+  }
+
+  setProviderSettings(providerId: string, settings: ProviderSettings, projectId?: Id): void {
+    this.db
+      .prepare(
+        `INSERT OR REPLACE INTO provider_settings
+         (provider_id, project_id, permission_mode, allowed_tools, command) VALUES (?, ?, ?, ?, ?)`,
+      )
+      .run(
+        providerId,
+        projectId ?? "",
+        settings.permissionMode ?? null,
+        settings.allowedTools ? JSON.stringify(settings.allowedTools) : null,
+        settings.command ?? null,
+      );
+  }
+
+  resolveProviderSettings(providerId: string, projectId: Id): ProviderSettings {
+    const defined = (s: ProviderSettings) => Object.fromEntries(Object.entries(s).filter(([, v]) => v !== undefined));
+    return {
+      ...defined(this.getProviderSettings(providerId)),
+      ...defined(this.getProviderSettings(providerId, projectId)),
+    };
   }
 
   appendEvent(runId: Id, event: AgentEvent): void {

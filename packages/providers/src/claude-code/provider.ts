@@ -1,6 +1,12 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import type { AgentEvent, AgentProvider, ProviderStatus, RunInput } from "@merge/core";
+import type {
+  AgentEvent,
+  AgentProvider,
+  ProviderSettings,
+  ProviderStatus,
+  RunInput,
+} from "@merge/core";
 import { parseClaudeLine } from "./parser.js";
 
 export interface ClaudeCodeOptions {
@@ -10,6 +16,23 @@ export interface ClaudeCodeOptions {
   permissionMode?: "default" | "acceptEdits" | "plan" | "bypassPermissions";
   /** Extra tools allowed without prompting, e.g. ["Bash(npm test)"]. */
   allowedTools?: string[];
+}
+
+const definedOnly = (s: ProviderSettings = {}): ProviderSettings =>
+  Object.fromEntries(Object.entries(s).filter(([, v]) => v !== undefined));
+
+/** CLI arguments for a run. Pure so it can be tested without spawning `claude`. */
+export function buildClaudeArgs(options: ClaudeCodeOptions): string[] {
+  const args = [
+    "-p",
+    "--output-format", "stream-json",
+    "--verbose",
+    "--permission-mode", options.permissionMode ?? "acceptEdits",
+  ];
+  if (options.allowedTools?.length) {
+    args.push("--allowedTools", ...options.allowedTools);
+  }
+  return args;
 }
 
 /**
@@ -25,11 +48,12 @@ export class ClaudeCodeProvider implements AgentProvider {
     this.command = options.command ?? "claude";
   }
 
-  check(): Promise<ProviderStatus> {
+  check(settings?: ProviderSettings): Promise<ProviderStatus> {
+    const command = settings?.command ?? this.command;
     return new Promise((resolve) => {
-      const child = spawn(this.command, ["--version"], { stdio: "ignore" });
+      const child = spawn(command, ["--version"], { stdio: "ignore" });
       child.on("error", () =>
-        resolve({ available: false, reason: `"${this.command}" not found in PATH` }),
+        resolve({ available: false, reason: `"${command}" not found in PATH` }),
       );
       child.on("exit", (code) =>
         resolve(code === 0 ? { available: true } : { available: false, reason: `exit code ${code}` }),
@@ -37,18 +61,11 @@ export class ClaudeCodeProvider implements AgentProvider {
     });
   }
 
-  async *run({ prompt, cwd, signal }: RunInput): AsyncIterable<AgentEvent> {
-    const args = [
-      "-p",
-      "--output-format", "stream-json",
-      "--verbose",
-      "--permission-mode", this.options.permissionMode ?? "acceptEdits",
-    ];
-    if (this.options.allowedTools?.length) {
-      args.push("--allowedTools", ...this.options.allowedTools);
-    }
+  async *run({ prompt, cwd, signal, settings }: RunInput): AsyncIterable<AgentEvent> {
+    const args = buildClaudeArgs({ ...this.options, ...definedOnly(settings) });
+    const command = settings?.command ?? this.command;
 
-    const child = spawn(this.command, args, { cwd, signal, stdio: ["pipe", "pipe", "pipe"] });
+    const child = spawn(command, args, { cwd, signal, stdio: ["pipe", "pipe", "pipe"] });
     // The prompt goes through stdin to avoid shell quoting problems.
     child.stdin.end(prompt);
 

@@ -32,4 +32,15 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX events_run ON events(run_id, seq);
   `,
+  // v2: per provider and per project settings. project_id is '' for the provider-wide scope.
+  `
+  CREATE TABLE provider_settings (
+    provider_id TEXT NOT NULL,
+    project_id TEXT NOT NULL DEFAULT '',
+    permission_mode TEXT,
+    allowed_tools TEXT,
+    command TEXT,
+    PRIMARY KEY (provider_id, project_id)
+  );
+  `,
 ];

@@ -45,7 +45,8 @@ export class Runner {
     if (!provider) throw new Error(`Unknown provider: ${providerId}`);
     if (isolate && !this.workspaces) throw new Error("Isolated runs need a workspace provider");
 
-    const status = await provider.check();
+    const settings = this.store.resolveProviderSettings(providerId, project.id);
+    const status = await provider.check(settings);
     if (!status.available) {
       throw new Error(`Provider "${providerId}" unavailable: ${status.reason ?? "unknown reason"}`);
     }
@@ -66,7 +67,7 @@ export class Runner {
         cwd = ws.path;
         emit({ type: "workspace.created", ...ws });
       }
-      for await (const event of provider.run({ prompt: task.prompt, cwd, signal })) {
+      for await (const event of provider.run({ prompt: task.prompt, cwd, signal, settings })) {
         emit(event);
         if (event.type === "run.finished") ok = event.ok;
       }
