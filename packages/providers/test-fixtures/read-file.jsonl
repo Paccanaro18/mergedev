@@ -1,0 +1,5 @@
+{"type":"system","subtype":"init","session_id":"8f7e6362-6731-4ab1-8b2e-eb16b17519ed","model":"claude-sonnet-5-5"}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_015gTCfYeWgDSGMtn3ytU9SM","name":"Read","input":{"file_path":"C:\\Users\\artur\\AppData\\Local\\Temp\\claude\\3902d32410232405\\a9dab0bc-2f70-438c-8a47-1949b70d9682\\scratchpad\\note.txt"},"caller":{"type":"direct"}}]}}
+{"type":"user","message":{"role":"user","content":[{"tool_use_id":"toolu_015gTCfYeWgDSGMtn3ytU9SM","type":"tool_result","content":"1\thello merge\n2\t"}]}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"note.txt says \"hello merge\"."}]}}
+{"type":"result","subtype":"success","is_error":false,"result":"note.txt says \"hello merge\".","total_cost_usd":0.0874337,"session_id":"8f7e6362-6731-4ab1-8b2e-eb16b17519ed"}
