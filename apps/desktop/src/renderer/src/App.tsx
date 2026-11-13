@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import type { MergeApi, StartOptions } from "../../shared/api";
 import { History } from "./History";
 import { RunFooter } from "./RunFooter";
+import { Sidebar } from "./Sidebar";
 import { Settings } from "./Settings";
 import { hasPendingPermission, RunView } from "./RunView";
 
@@ -135,47 +136,27 @@ export function App() {
 
   return (
     <div className="app">
-      <aside className="sidebar">
-        <h1>Merge</h1>
-        <h2>Projetos</h2>
-        {projects === null ? (
-          <p className="muted">Carregando…</p>
-        ) : projects.length === 0 ? (
-          <p className="muted">Nenhum projeto ainda.</p>
-        ) : (
-          <ul>
-            {projects.map((p) => (
-              <li key={p.id}>
-                <button
-                  className={`project${p.id === selectedId ? " selected" : ""}`}
-                  onClick={() => {
-                    setSelectedId(p.id);
-                    setView("tasks");
-                  }}
-                >
-                  <strong>{p.name}</strong>
-                  <span className="muted path">{p.path}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-        <button className="primary" onClick={() => void addProject()}>
-          Adicionar projeto
-        </button>
-        <h2>Providers</h2>
-        <ul>
-          {providers.map((p) => (
-            <li key={p.id}>
-              <strong>{p.displayName}</strong>{" "}
-              <span className={p.status.available ? "ok" : "bad"}>
-                {p.status.available ? "instalado" : `indisponível: ${p.status.reason ?? "?"}`}
-              </span>
-            </li>
-          ))}
-        </ul>
-        <button onClick={() => setView("settings")}>Configurações</button>
-      </aside>
+      <Sidebar
+        projects={projects}
+        selectedId={selectedId}
+        tasks={tasks}
+        openTaskId={openTaskId}
+        active={active}
+        providers={providers}
+        settingsOpen={view === "settings"}
+        onSelectProject={(id) => {
+          setSelectedId(id);
+          setView("tasks");
+        }}
+        onOpenTask={(id) => {
+          setView("tasks");
+          setOpenTaskId(id);
+          setOpenMode("live");
+          requestAnimationFrame(() => document.getElementById(`task-${id}`)?.scrollIntoView({ block: "start" }));
+        }}
+        onAddProject={() => void addProject()}
+        onOpenSettings={() => setView("settings")}
+      />
       <main className="content">
         {error && (
           <div className="error" role="alert">
@@ -264,8 +245,10 @@ function TaskPanel(props: {
 
   return (
     <>
-      <h2>{project.name}</h2>
-      <p className="muted path">{project.path}</p>
+      <header className="page-head">
+        <h1>{project.name}</h1>
+        <p className="muted path" title={project.path}>{project.path}</p>
+      </header>
 
       <h2>Tarefas</h2>
       {tasks === null ? (
@@ -275,7 +258,7 @@ function TaskPanel(props: {
       ) : (
         <ul>
           {tasks.map((t) => (
-            <li key={t.id}>
+            <li key={t.id} id={`task-${t.id}`} className="task-item">
               <strong>{t.title}</strong> <span className="badge">{t.status}</span>{" "}
               {active.has(t.id) && openTaskId === t.id && hasPendingPermission(events) && (
                 <span className="badge warn">aguardando você</span>
