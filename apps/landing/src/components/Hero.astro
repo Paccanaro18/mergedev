@@ -1,0 +1,52 @@
+---
+import DownloadActions from "./DownloadActions.astro";
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="container hero__inner">
+    <h1 class="hero__title" id="hero-title">
+      <span>Vários agentes</span>
+      <span>de código.</span>
+      <span class="accent">Um só lugar.</span>
+    </h1>
+    <p class="hero__lead">
+      O Merge orquestra Claude Code, Codex e outros agentes dentro dos seus projetos e
+      tarefas, direto no seu computador.
+    </p>
+
+    <DownloadActions />
+
+    <div
+      class="window"
+      role="img"
+      aria-label="Exemplo da janela do Merge, projeto meu-projeto: a tarefa “Corrigir erro no login” executando com o Claude Code, “Escrever testes da API” executando com o Codex e “Revisar mudanças” concluída com o Claude Code."
+    >
+      <div class="window__bar">
+        <span class="window__dot"></span>
+        <span class="window__dot"></span>
+        <span class="window__dot"></span>
+        <span class="window__title">Merge · meu-projeto</span>
+      </div>
+      <div class="window__body">
+        <div class="window__row">
+          <span class="status-dot"></span>
+          <span class="window__name">Corrigir erro no login</span>
+          <span class="window__tool window__tool--on">Claude Code</span>
+          <span class="window__state">executando</span>
+        </div>
+        <div class="window__row">
+          <span class="status-dot"></span>
+          <span class="window__name">Escrever testes da API</span>
+          <span class="window__tool window__tool--on">Codex</span>
+          <span class="window__state">executando</span>
+        </div>
+        <div class="window__row">
+          <span class="status-dot status-dot--idle"></span>
+          <span class="window__name">Revisar mudanças</span>
+          <span class="window__tool">Claude Code</span>
+          <span class="window__state">concluído</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

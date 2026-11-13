@@ -1,0 +1,21 @@
+---
+import { REPO_URL, RELEASES_URL } from "../config";
+import Logo from "./Logo.astro";
+---
+
+<footer class="footer">
+  <div class="container footer__inner">
+    <a class="logo" href="#top" aria-label="Merge, voltar ao topo">
+      <Logo size={30} />
+      <span>Merge</span>
+    </a>
+    <nav class="footer__links" aria-label="Rodapé">
+      <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
+        GitHub<span class="sr-only"> (abre em nova aba)</span>
+      </a>
+      <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
+        Versões<span class="sr-only"> (abre em nova aba)</span>
+      </a>
+    </nav>
+  </div>
+</footer>

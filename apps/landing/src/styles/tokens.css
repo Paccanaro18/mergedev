@@ -1,0 +1,98 @@
+/*
+ * Tokens do design (Paper, arquivo MERGE DEV). Valores exatos do Paper:
+ *   --color-background #141413, --color-foreground #FAF9F5, --color-accent #D97757
+ * O tema escuro é o do Paper. O claro é derivado do mesmo sistema (o Paper só
+ * tem o escuro): o acento usado como TEXTO/ÍCONE escurece para manter contraste.
+ */
+
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../assets/fonts/poppins-latin-500-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../assets/fonts/poppins-latin-600-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Lora";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("../assets/fonts/lora-latin-wght-normal.woff2") format("woff2");
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("../assets/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: dark light;
+
+  /* Fontes */
+  --font-heading: "Poppins", system-ui, sans-serif;
+  --font-body: "Lora", Georgia, "Times New Roman", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+
+  /* Cores do tema (escuro = Paper) */
+  --bg: #141413;
+  --fg-rgb: 250 249 245;
+  --accent: #d97757; /* preenchimentos (botões, faixa) */
+  --accent-ink: #d97757; /* acento como texto/ícone/borda sobre o fundo da página */
+  --on-accent: #141413; /* texto sobre preenchimento de acento */
+  --focus: #faf9f5;
+
+  /* Painéis tipo "app": sempre escuros, nos dois temas (são capturas do produto) */
+  --panel: #1d1d1b;
+  --panel-deep: #141413;
+  --panel-fg-rgb: 250 249 245;
+
+  /* Derivados de --fg-rgb (alfas exatos do Paper: 05, 15, 20, 25, 35, 40, 50, 70, 75, 80) */
+  --fg: rgb(var(--fg-rgb));
+  --fg-80: rgb(var(--fg-rgb) / 0.8);
+  --fg-75: rgb(var(--fg-rgb) / 0.75);
+  --fg-70: rgb(var(--fg-rgb) / 0.7);
+  --fg-50: rgb(var(--fg-rgb) / 0.5);
+  --fg-40: rgb(var(--fg-rgb) / 0.4);
+  --line: rgb(var(--fg-rgb) / 0.25);
+  --line-soft: rgb(var(--fg-rgb) / 0.2);
+  --surface: rgb(var(--fg-rgb) / 0.05);
+
+  /* Espaçamento e forma */
+  --gutter: 80px;
+  --section-y: 112px;
+  --radius-sm: 12px;
+  --radius-md: 16px;
+  --radius-lg: 24px;
+  --max-width: 1440px;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #faf9f5;
+    --fg-rgb: 20 20 19;
+    --accent-ink: #a83f22; /* 5,9:1 sobre #FAF9F5 */
+    --focus: #141413;
+  }
+}
+
+@media (max-width: 1100px) {
+  :root {
+    --gutter: 40px;
+    --section-y: 88px;
+  }
+}
+@media (max-width: 640px) {
+  :root {
+    --gutter: 20px;
+    --section-y: 72px;
+  }
+}

@@ -1,0 +1,75 @@
+---
+import { AGENTS } from "../config";
+---
+
+<section class="agents" aria-labelledby="agentes-titulo">
+  <div class="container">
+    <div class="agents__head">
+      <h2 class="agents__label" id="agentes-titulo">Agentes compatíveis</h2>
+      <p class="agents__hint">Claude Code e Codex hoje · mais agentes chegando</p>
+    </div>
+    <ul class="agents__track">
+      {
+        AGENTS.map((agent) => (
+          <li class:list={["agent", { "agent--soon": agent.status === "soon" }]}>
+            {agent.name === "Claude Code" && (
+              <svg
+                width="36"
+                height="36"
+                viewBox="0 0 36 36"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3.4"
+                stroke-linecap="round"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <path d="M18 3v30M3 18h30M7.4 7.4l21.2 21.2M28.6 7.4L7.4 28.6M11 4.6l14 26.8M25 4.6L11 31.4" />
+              </svg>
+            )}
+            {agent.name === "Codex" && (
+              <svg
+                width="36"
+                height="36"
+                viewBox="0 0 36 36"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+                focusable="false"
+              >
+                <rect x="2" y="5" width="32" height="26" rx="8" />
+                <path d="M10 13l6 5-6 5M19 24h8" />
+              </svg>
+            )}
+            <span>
+              <span class="agent__name">{agent.name}</span>
+              {agent.status === "soon" && <span class="agent__tag">em breve</span>}
+            </span>
+          </li>
+        ))
+      }
+      <li class="agent agent--soon">
+        <svg
+          width="36"
+          height="36"
+          viewBox="0 0 36 36"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="3"
+          stroke-linecap="round"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M18 8v20M8 18h20" />
+        </svg>
+        <span>
+          <span class="agent__name">Outros agentes</span>
+          <span class="agent__tag">em breve</span>
+        </span>
+      </li>
+    </ul>
+  </div>
+</section>

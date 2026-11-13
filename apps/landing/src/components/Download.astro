@@ -1,0 +1,98 @@
+---
+import { INSTALLERS, RELEASE_PUBLISHED, RELEASES_URL } from "../config";
+import DownloadActions from "./DownloadActions.astro";
+---
+
+<section class="cta" id="baixar" aria-labelledby="baixar-titulo">
+  <div class="container cta__inner">
+    <h2 class="h2 cta__title" id="baixar-titulo">
+      <span>Pronto para juntar</span>
+      <span>seus agentes?</span>
+    </h2>
+
+    <DownloadActions />
+
+    <aside class="notice" aria-labelledby="aviso-titulo">
+      <h3 class="notice__title" id="aviso-titulo">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+          <path d="M12 3l9 16H3z"></path>
+          <path d="M12 10v4M12 17h.01"></path>
+        </svg>
+        O instalador do MVP pode não ser assinado
+      </h3>
+      <p>
+        Assinatura de código tem custo e burocracia, então o primeiro instalador pode sair
+        sem ela. Nesse caso o sistema mostra um alerta na primeira abertura. Isso é esperado:
+      </p>
+      <ul>
+        <li>
+          <strong>Windows (SmartScreen):</strong> clique em “Mais informações” e depois em
+          “Executar assim mesmo”.
+        </li>
+        <li>
+          <strong>macOS (Gatekeeper):</strong> clique com o botão direito no app, escolha
+          “Abrir” e confirme. Se necessário, libere em Ajustes do Sistema › Privacidade e
+          segurança.
+        </li>
+        <li>
+          <strong>Linux (AppImage):</strong> torne o arquivo executável com{" "}
+          <code>chmod +x Merge.AppImage</code>.
+        </li>
+      </ul>
+      <p>
+        Baixe sempre pelo GitHub Releases e confira o SHA-256 do arquivo antes de abrir.
+      </p>
+    </aside>
+
+    <details class="checksums" id="checksums">
+      <summary>
+        <span>Conferir integridade (SHA-256)</span>
+        <span class="faq__icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 18 18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+            <path d="M3 9h12"></path>
+            <path class="v" d="M9 3v12"></path>
+          </svg>
+        </span>
+      </summary>
+      <div class="checksums__body">
+        <p class="checksums__intro">
+          Compare o hash do arquivo baixado com o valor abaixo. Se for diferente, não abra o
+          arquivo.
+          {
+            !RELEASE_PUBLISHED && (
+              <>
+                {" "}
+                Os hashes serão publicados junto com a primeira release no{" "}
+                <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
+                  GitHub<span class="sr-only"> (abre em nova aba)</span>
+                </a>
+                .
+              </>
+            )
+          }
+        </p>
+        <dl>
+          {
+            INSTALLERS.map((installer) => (
+              <div class="checksums__item">
+                <dt>
+                  {installer.label} · <span class="mono">{installer.file}</span>
+                </dt>
+                <dd>
+                  {installer.sha256 ? (
+                    <code class="checksums__hash">{installer.sha256}</code>
+                  ) : (
+                    <span class="checksums__pending">SHA-256 ainda não publicado.</span>
+                  )}
+                  <span class="checksums__cmd">
+                    Para conferir: <code>{installer.verifyCommand}</code>
+                  </span>
+                </dd>
+              </div>
+            ))
+          }
+        </dl>
+      </div>
+    </details>
+  </div>
+</section>

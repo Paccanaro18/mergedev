@@ -1,0 +1,31 @@
+---
+import Layout from "../layouts/Layout.astro";
+import Header from "../components/Header.astro";
+import Hero from "../components/Hero.astro";
+import AgentsStrip from "../components/AgentsStrip.astro";
+import HowItWorks from "../components/HowItWorks.astro";
+import Features from "../components/Features.astro";
+import Privacy from "../components/Privacy.astro";
+import Faq from "../components/Faq.astro";
+import Download from "../components/Download.astro";
+import Footer from "../components/Footer.astro";
+---
+
+<Layout
+  title="Merge — vários agentes de código, um só lugar"
+  description="O Merge orquestra Claude Code, Codex e outros agentes dentro dos seus projetos e tarefas, direto no seu computador. Roda 100% local e usa o CLI e o login que você já tem."
+>
+  <div id="top">
+    <Header />
+    <main id="conteudo">
+      <Hero />
+      <AgentsStrip />
+      <HowItWorks />
+      <Features />
+      <Privacy />
+      <Faq />
+      <Download />
+    </main>
+    <Footer />
+  </div>
+</Layout>

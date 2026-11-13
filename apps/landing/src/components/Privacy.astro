@@ -1,0 +1,38 @@
+<section class="privacy" id="privacidade" aria-labelledby="privacidade-titulo">
+  <div class="container privacy__inner">
+    <div class="privacy__copy">
+      <p class="eyebrow">100% local</p>
+      <h2 class="privacy__title" id="privacidade-titulo">
+        <span>Seu código fica</span>
+        <span>na sua máquina.</span>
+      </h2>
+      <p class="privacy__text">
+        O Merge roda inteiro no seu computador e usa o CLI e o login que você já tem. Não
+        existe servidor do Merge recebendo o seu código.
+      </p>
+    </div>
+
+    <div class="diagram" role="img" aria-label="Diagrama: no seu computador, o Merge conversa com o CLI do agente. Não existe servidor do Merge e nada é enviado.">
+      <div class="diagram__local">
+        <span class="diagram__label">SEU COMPUTADOR</span>
+        <div class="diagram__flow">
+          <span class="diagram__node diagram__node--merge">Merge</span>
+          <svg width="40" height="16" viewBox="0 0 40 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 8h34M30 2l6 6-6 6"></path>
+          </svg>
+          <span class="diagram__node diagram__node--cli">CLI do agente</span>
+        </div>
+        <p class="diagram__note">Seu projeto, seu login, suas pastas.</p>
+      </div>
+      <div class="diagram__server">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round">
+          <path d="M5 5l14 14M19 5L5 19"></path>
+        </svg>
+        <div>
+          <strong>Servidor do Merge</strong>
+          <span>Não existe. Nada é enviado.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
