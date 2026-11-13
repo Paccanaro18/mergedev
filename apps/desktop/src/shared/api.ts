@@ -29,11 +29,17 @@ export interface MergeApi {
   };
   runs: {
     /**
-     * Runs the task with Claude Code, in an isolated git worktree when the project folder is a
-     * git repository with at least one commit (otherwise in the folder itself, with a notice).
-     * Resolves when the run ends; rejects if the provider is unavailable.
+     * Runs the task with Claude Code. Resolves when the run ends; rejects if the provider is unavailable.
+     *
+     * `isolate` (default true) runs it in an isolated git worktree. That needs the project folder to be
+     * a git repository with at least one commit; otherwise it runs in the folder itself, with a notice.
+     * With `isolate: false` the agent works directly in the project folder.
+     *
+     * With `followUp` it instead continues the conversation of an earlier run of the task with a
+     * new instruction. The agent keeps that run's context, and an isolated run continues in its own
+     * worktree (`isolate` is ignored), so it is refused once that worktree was kept or discarded.
      */
-    start(taskId: string): Promise<Run>;
+    start(taskId: string, options?: StartOptions): Promise<Run>;
     /** Stops the task's running process, if any. */
     cancel(taskId: string): Promise<void>;
     /** Past runs of a task, oldest first, with the cost recorded in their events. */
@@ -59,6 +65,11 @@ export interface MergeApi {
     /** Subscribes to live events of every run. Returns the unsubscribe function. */
     onEvent(listener: (message: RunEventMessage) => void): () => void;
   };
+}
+
+export interface StartOptions {
+  isolate?: boolean;
+  followUp?: { resumeFromRunId: string; prompt: string };
 }
 
 export interface RunSummary extends Run {

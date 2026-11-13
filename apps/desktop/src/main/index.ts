@@ -8,7 +8,7 @@ import type { AgentEvent, PermissionDecision, PermissionMode, ProviderSettings }
 import { Runner } from "@merge/runner";
 import { SqliteStore } from "@merge/store";
 import { WorktreeManager, type Workspace } from "@merge/workspace";
-import { Channels, type RunChanges, type RunSummary } from "../shared/api";
+import { Channels, type RunChanges, type RunSummary, type StartOptions } from "../shared/api";
 
 const execFileAsync = promisify(execFile);
 
@@ -99,15 +99,21 @@ function registerIpc(store: SqliteStore, runner: Runner, worktrees: WorktreeMana
       return store.createTask({ projectId: input.projectId, title, prompt });
     },
   );
-  ipcMain.handle(Channels.runsStart, async (event, taskId: string) => {
+  ipcMain.handle(Channels.runsStart, async (event, taskId: string, options?: StartOptions) => {
     if (running.has(taskId)) throw new Error("Esta tarefa já está em execução.");
+    const followUp = options?.followUp;
+    // Isolation is on unless the user turned it off for this run.
+    const wantsIsolation = options?.isolate !== false;
+    if (followUp && !followUp.prompt?.trim()) throw new Error("Escreva a nova instrução.");
     const controller = new AbortController();
     running.set(taskId, controller);
     try {
       const task = store.getTask(taskId);
       const project = task && store.getProject(task.projectId);
-      const isolate = project ? await canIsolate(project.path) : false;
-      if (!isolate && !event.sender.isDestroyed()) {
+      // A follow-up continues where the earlier run was: the runner reuses that run's worktree, or
+      // the project folder when it was not isolated (a session only resumes from the same folder).
+      const isolate = !followUp && wantsIsolation && project ? await canIsolate(project.path) : false;
+      if (!followUp && wantsIsolation && !isolate && !event.sender.isDestroyed()) {
         event.sender.send(Channels.runsNotice, {
           taskId,
           message:
@@ -117,6 +123,7 @@ function registerIpc(store: SqliteStore, runner: Runner, worktrees: WorktreeMana
       return await runner.runTask(taskId, {
         providerId: "claude-code",
         isolate,
+        ...(followUp ? { resumeFromRunId: followUp.resumeFromRunId, prompt: followUp.prompt.trim() } : {}),
         signal: controller.signal,
         // Pauses the run until the user answers through runs:respondPermission.
         // On cancel the adapter stops waiting by itself (it watches the signal); we only drop the entry.
