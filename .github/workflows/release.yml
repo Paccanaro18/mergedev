@@ -1,0 +1,67 @@
+name: Release
+
+# release-please keeps a "release PR" open on main. Merging it creates the tag and the
+# GitHub Release; the installers are then built and attached in this same workflow
+# (PRs and tags created with GITHUB_TOKEN do not trigger other workflows).
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  release-please:
+    name: Release PR / tag
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.rp.outputs.release_created }}
+      tag_name: ${{ steps.rp.outputs.tag_name }}
+    steps:
+      - id: rp
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  package:
+    name: Build installers
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/package.yml
+
+  publish:
+    name: Attach installers to the release
+    needs: [release-please, package]
+    runs-on: ubuntu-latest
+    # The only job allowed to write to the repository contents.
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: installer-*
+          path: dist
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: dist
+        run: |
+          ls -la
+          sha256sum Merge-Setup.exe Merge.dmg Merge.AppImage | tee SHA256SUMS.txt
+
+      - name: Upload to the release
+        working-directory: dist
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+        run: gh release upload "$TAG" Merge-Setup.exe Merge.dmg Merge.AppImage SHA256SUMS.txt --clobber
