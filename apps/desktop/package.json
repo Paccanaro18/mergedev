@@ -1,6 +1,6 @@
 {
   "name": "@merge/desktop",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "description": "Merge: orquestre agentes de código (Claude Code e outros) nos seus projetos, direto no seu computador.",
   "author": {
